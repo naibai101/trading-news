@@ -60,6 +60,11 @@
     height: 60px;
     z-index: 1;
     pointer-events: none;
+    animation: lights-breathe 4s ease-in-out infinite;
+  }
+  @keyframes lights-breathe {
+    0%,100% { opacity: 0.7; }
+    50%      { opacity: 1; }
   }
 
   /* ── Layout ────────────────────────────────────────────────────── */
@@ -264,7 +269,6 @@
     gap: 10px;
     transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
     cursor: pointer;
-    text-decoration: none;
     color: inherit;
     position: relative;
     overflow: hidden;
@@ -509,6 +513,9 @@
     <button class="chip" data-cat="regulatory" onclick="setFilter('regulatory')">
       📋 Regulatory
     </button>
+    <button class="chip" data-cat="movers" onclick="setFilter('movers')">
+      🚀 Movers
+    </button>
     <div class="search-wrap">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
       <input type="text" id="search-input" placeholder="Search ticker, topic…" oninput="applyFilters()" />
@@ -628,7 +635,6 @@ let activeFilter = 'all';
     circle.setAttribute('r', 3.5);
     circle.setAttribute('fill', `hsl(${hue},80%,75%)`);
     circle.setAttribute('opacity', '0.85');
-    circle.style.animation = `pulse-dot ${1.5 + Math.random()}s ease-in-out ${Math.random() * 2}s infinite`;
     g.appendChild(circle);
 
     // Glow
@@ -666,10 +672,28 @@ function biasColor(bias) {
   return map[bias] || '#6d5e8a';
 }
 
+const MOVER_KEYWORDS = [
+  'surges','surge','surged','jumps','jump','jumped','plunges','plunge','plunged',
+  'tumbles','tumble','tumbled','rallies','rally','rallied','spikes','spike','spiked',
+  'soars','soar','soared','slumps','slump','slumped','sinks','sink','sank','slides',
+  'slide','slid','climbs','climb','climbed','drops','drop','dropped','falls','fall','fell',
+  'rises','rise','rose','gains','gain','gained','loses','loss','lost','crashes','crash',
+  'crashed','record high','record low','52-week','all-time high','all-time low',
+  'breakout','breakdown','upgrade','downgrade','price target','beat','miss',
+  'blowout','guidance cut','guidance raised','% gain','% loss','% drop','% rise',
+  '% jump','% surge','% plunge','short squeeze','halted','halts',
+];
+
+function isMover(item) {
+  const text = (item.title + ' ' + (item.summary || '')).toLowerCase();
+  return MOVER_KEYWORDS.some(kw => text.includes(kw));
+}
+
 function buildCard(item) {
   const ago = timeAgo(item.published);
+  const safeLink = item.link.replace(/"/g, '&quot;');
   return `
-    <a class="news-card" href="${item.link}" target="_blank" rel="noopener noreferrer">
+    <div class="news-card" onclick="window.open('${safeLink}','_blank')">
       <div class="card-meta">
         <span class="cat-badge ${catClass(item.category)}">${catLabel(item.category)}</span>
         <span class="source-name">${item.source}</span>
@@ -679,12 +703,12 @@ function buildCard(item) {
       ${item.summary ? `<div class="card-summary">${item.summary}</div>` : ''}
       <div class="card-footer">
         <span class="bias-tag" title="Editorial lean" style="color:${biasColor(item.bias)};background:${biasColor(item.bias)}18">${item.bias}</span>
-        <a class="read-link" href="${item.link}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">
+        <a class="read-link" href="${safeLink}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">
           Read
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
         </a>
       </div>
-    </a>`;
+    </div>`;
 }
 
 function updateStats(items) {
@@ -701,7 +725,8 @@ function applyFilters() {
   const empty = document.getElementById('empty-state');
 
   let filtered = allItems;
-  if (activeFilter !== 'all') filtered = filtered.filter(i => i.category === activeFilter);
+  if (activeFilter === 'movers') filtered = filtered.filter(isMover);
+  else if (activeFilter !== 'all') filtered = filtered.filter(i => i.category === activeFilter);
   if (q) filtered = filtered.filter(i =>
     i.title.toLowerCase().includes(q) ||
     i.source.toLowerCase().includes(q) ||
