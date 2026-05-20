@@ -3,7 +3,6 @@ import feedparser
 import httpx
 import os
 import time
-import google.generativeai as genai
 from fastapi import FastAPI, Header
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -479,18 +478,28 @@ Write the brief in exactly this structure. One tight sentence per bullet, zero f
 [2–3 bullets: upcoming catalysts, earnings, or setups that could create swing opportunities]"""
 
     try:
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash-latest",
-            system_instruction="You are a concise swing trading market analyst. Write tight, specific, actionable briefs with zero fluff.",
+        gemini_url = (
+            "https://generativelanguage.googleapis.com/v1beta/models/"
+            f"gemini-1.5-flash:generateContent?key={api_key}"
         )
-        response = model.generate_content(prompt)
-        brief_text = response.text
+        payload = {
+            "system_instruction": {
+                "parts": [{"text": "You are a concise swing trading market analyst. Write tight, specific, actionable briefs with zero fluff."}]
+            },
+            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+            "generationConfig": {"maxOutputTokens": 700, "temperature": 0.4},
+        }
+        async with httpx.AsyncClient(timeout=30.0) as gc:
+            resp = await gc.post(gemini_url, json=payload)
+        data = resp.json()
+        if resp.status_code != 200:
+            err = data.get("error", {}).get("message", str(data))
+            if "API_KEY_INVALID" in err or "API key" in err.lower():
+                return JSONResponse({"error": "bad_key"}, status_code=200)
+            return JSONResponse({"error": err}, status_code=200)
+        brief_text = data["candidates"][0]["content"]["parts"][0]["text"]
     except Exception as e:
-        err = str(e)
-        if "API_KEY_INVALID" in err or "API key" in err.lower():
-            return JSONResponse({"error": "bad_key"}, status_code=200)
-        return JSONResponse({"error": err}, status_code=200)
+        return JSONResponse({"error": str(e)}, status_code=200)
 
     result = {
         "brief": brief_text,
