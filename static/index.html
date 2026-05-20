@@ -531,6 +531,19 @@
   .brief-generate-btn:active { transform: translateY(0); }
   .brief-generate-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
+  .brief-key-btn {
+    width: 32px; height: 32px;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    font-size: 0.85rem;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: border-color 0.18s, box-shadow 0.18s;
+    flex-shrink: 0;
+  }
+  .brief-key-btn:hover { border-color: var(--purple-2); box-shadow: 0 0 10px var(--glow); }
+
   .brief-body { padding: 20px 24px 22px; display: none; }
   .brief-panel.open .brief-body { display: block; }
 
@@ -689,6 +702,7 @@
         </div>
       </div>
       <button class="brief-generate-btn" id="brief-gen-btn" onclick="event.stopPropagation();generateBrief()">Generate</button>
+      <button class="brief-key-btn" id="brief-key-btn" onclick="event.stopPropagation();showKeyInput()" title="Set API Key">🔑</button>
       <svg class="brief-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
     </div>
     <div class="brief-body" id="brief-body">
@@ -1057,6 +1071,12 @@ function saveKey() {
 function hideBriefKeyRow() {
   const row = document.getElementById('brief-key-row');
   if (localStorage.getItem('gemini_key')) row.style.display = 'none';
+}
+
+function showKeyInput() {
+  document.getElementById('brief-panel').classList.add('open');
+  document.getElementById('brief-key-row').style.display = 'flex';
+  document.getElementById('brief-key-input').focus();
 }
 
 function parseBrief(text) {
