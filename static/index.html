@@ -462,6 +462,173 @@
     margin-top: 3px;
   }
 
+  /* ── Brief panel ───────────────────────────────────────────────── */
+  .brief-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    backdrop-filter: blur(14px);
+    margin-bottom: 24px;
+    overflow: hidden;
+    transition: border-color 0.2s;
+  }
+  .brief-panel:focus-within,
+  .brief-panel:hover { border-color: var(--border-hv); }
+
+  .brief-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 20px;
+    cursor: pointer;
+    user-select: none;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.2s;
+  }
+  .brief-panel.open .brief-header { border-bottom-color: var(--border); }
+
+  .brief-header-left { display: flex; align-items: center; gap: 10px; flex: 1; }
+  .brief-icon {
+    width: 32px; height: 32px; border-radius: 10px;
+    background: linear-gradient(135deg, var(--purple-3), #5b21b6);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.95rem; flex-shrink: 0;
+    box-shadow: 0 2px 10px rgba(124,58,237,0.35);
+  }
+  .brief-title {
+    font-family: 'Nunito', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--purple-1);
+  }
+  .brief-subtitle {
+    font-size: 0.7rem;
+    color: var(--text-faint);
+    margin-top: 1px;
+  }
+  .brief-chevron {
+    color: var(--text-faint);
+    transition: transform 0.25s;
+    flex-shrink: 0;
+  }
+  .brief-panel.open .brief-chevron { transform: rotate(180deg); }
+
+  .brief-generate-btn {
+    padding: 6px 16px;
+    border-radius: var(--radius-pill);
+    background: linear-gradient(135deg, var(--purple-3), #5b21b6);
+    border: none;
+    color: #fff;
+    font-family: inherit;
+    font-size: 0.75rem;
+    font-weight: 700;
+    cursor: pointer;
+    box-shadow: 0 3px 10px rgba(124,58,237,0.35);
+    transition: box-shadow 0.2s, transform 0.15s, opacity 0.15s;
+    white-space: nowrap;
+  }
+  .brief-generate-btn:hover  { box-shadow: 0 5px 16px rgba(124,58,237,0.5); transform: translateY(-1px); }
+  .brief-generate-btn:active { transform: translateY(0); }
+  .brief-generate-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  .brief-body { padding: 20px 24px 22px; display: none; }
+  .brief-panel.open .brief-body { display: block; }
+
+  /* Key input row */
+  .brief-key-row {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 16px;
+    padding: 12px 14px;
+    background: rgba(124,58,237,0.08);
+    border: 1px solid rgba(124,58,237,0.2);
+    border-radius: 12px;
+    flex-wrap: wrap;
+  }
+  .brief-key-row label { font-size: 0.72rem; color: var(--text-dim); font-weight: 600; white-space: nowrap; }
+  .brief-key-input {
+    flex: 1;
+    min-width: 180px;
+    background: rgba(0,0,0,0.25);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-main);
+    font-family: monospace;
+    font-size: 0.75rem;
+    padding: 6px 10px;
+    outline: none;
+    transition: border-color 0.18s;
+  }
+  .brief-key-input:focus { border-color: var(--purple-2); }
+  .brief-key-input::placeholder { color: var(--text-faint); font-family: inherit; }
+  .brief-key-save {
+    padding: 5px 12px;
+    border-radius: 8px;
+    background: var(--purple-3);
+    border: none; color: #fff;
+    font-family: inherit; font-size: 0.72rem; font-weight: 700;
+    cursor: pointer; white-space: nowrap;
+    transition: opacity 0.15s;
+  }
+  .brief-key-save:hover { opacity: 0.85; }
+  .brief-key-saved { font-size: 0.7rem; color: var(--green); display: none; }
+
+  /* Brief content */
+  .brief-loading {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 0; color: var(--text-dim); font-size: 0.82rem;
+  }
+  .brief-loader {
+    width: 18px; height: 18px;
+    border: 2px solid var(--border); border-top-color: var(--purple-2);
+    border-radius: 50%; animation: spin 0.8s linear infinite; flex-shrink: 0;
+  }
+  .brief-content { display: none; }
+  .brief-content.visible { display: block; }
+  .brief-error { font-size: 0.82rem; color: var(--red-soft); padding: 8px 0; display: none; }
+
+  .brief-section { margin-bottom: 18px; }
+  .brief-section:last-child { margin-bottom: 0; }
+  .brief-section-title {
+    font-family: 'Nunito', sans-serif;
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: var(--purple-2);
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 8px;
+  }
+  .brief-section ul { list-style: none; display: flex; flex-direction: column; gap: 6px; }
+  .brief-section ul li {
+    font-size: 0.83rem;
+    color: var(--text-main);
+    line-height: 1.5;
+    padding-left: 14px;
+    position: relative;
+  }
+  .brief-section ul li::before {
+    content: '·';
+    position: absolute; left: 0;
+    color: var(--purple-2); font-weight: 800;
+  }
+  .brief-mood {
+    font-size: 0.88rem;
+    color: var(--text-main);
+    line-height: 1.55;
+    padding: 10px 14px;
+    background: rgba(167,139,250,0.07);
+    border-left: 3px solid var(--purple-2);
+    border-radius: 0 8px 8px 0;
+  }
+  .brief-meta {
+    font-size: 0.68rem;
+    color: var(--text-faint);
+    margin-top: 16px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+
   /* ── Responsive ────────────────────────────────────────────────── */
   @media (max-width: 600px) {
     #news-grid { grid-template-columns: 1fr; }
@@ -510,6 +677,37 @@
       <span class="last-updated" id="last-updated"></span>
     </div>
   </header>
+
+  <!-- ── Brief panel ── -->
+  <div class="brief-panel" id="brief-panel">
+    <div class="brief-header" onclick="toggleBrief()">
+      <div class="brief-header-left">
+        <div class="brief-icon">⚡</div>
+        <div>
+          <div class="brief-title">Morning Brief</div>
+          <div class="brief-subtitle" id="brief-subtitle">AI summary of today's market — click to expand</div>
+        </div>
+      </div>
+      <button class="brief-generate-btn" id="brief-gen-btn" onclick="event.stopPropagation();generateBrief()">Generate</button>
+      <svg class="brief-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="brief-body" id="brief-body">
+      <!-- API key row — hidden once key is saved -->
+      <div class="brief-key-row" id="brief-key-row">
+        <label>Anthropic API Key</label>
+        <input class="brief-key-input" id="brief-key-input" type="password" placeholder="sk-ant-..." autocomplete="off" />
+        <button class="brief-key-save" onclick="saveKey()">Save</button>
+        <span class="brief-key-saved" id="brief-key-saved">✓ Saved</span>
+      </div>
+      <div class="brief-loading" id="brief-loading" style="display:none">
+        <div class="brief-loader"></div>
+        Reading headlines and generating your brief…
+      </div>
+      <div class="brief-error" id="brief-error"></div>
+      <div class="brief-content" id="brief-content"></div>
+      <div class="brief-meta" id="brief-meta" style="display:none"></div>
+    </div>
+  </div>
 
   <!-- ── Stats strip ── -->
   <div class="stats-strip" id="stats-strip">
@@ -841,11 +1039,147 @@ async function loadNews() {
   btn.classList.remove('spinning');
 }
 
+// ── Brief panel ───────────────────────────────────────────────────
+function toggleBrief() {
+  document.getElementById('brief-panel').classList.toggle('open');
+}
+
+function saveKey() {
+  const val = document.getElementById('brief-key-input').value.trim();
+  if (!val) return;
+  localStorage.setItem('anthropic_key', val);
+  document.getElementById('brief-key-input').value = '';
+  document.getElementById('brief-key-saved').style.display = 'inline';
+  setTimeout(() => document.getElementById('brief-key-saved').style.display = 'none', 2000);
+  hideBriefKeyRow();
+}
+
+function hideBriefKeyRow() {
+  const row = document.getElementById('brief-key-row');
+  if (localStorage.getItem('anthropic_key')) row.style.display = 'none';
+}
+
+function parseBrief(text) {
+  // Split into sections by **Heading** markers
+  const sections = [];
+  const lines = text.split('\n').filter(l => l.trim());
+  let current = null;
+  for (const line of lines) {
+    const heading = line.match(/^\*\*(.+?)\*\*$/);
+    if (heading) {
+      if (current) sections.push(current);
+      current = { title: heading[1], items: [] };
+    } else if (current) {
+      const clean = line.replace(/^[\-\•]\s*/, '').trim();
+      if (clean) current.items.push(clean);
+    }
+  }
+  if (current) sections.push(current);
+  return sections;
+}
+
+function renderBrief(data) {
+  const content = document.getElementById('brief-content');
+  const meta    = document.getElementById('brief-meta');
+  const sections = parseBrief(data.brief);
+
+  if (!sections.length) {
+    content.innerHTML = `<p style="font-size:0.83rem;color:var(--text-dim)">${data.brief}</p>`;
+  } else {
+    content.innerHTML = sections.map(s => {
+      if (s.title === 'Market Mood') {
+        return `<div class="brief-section">
+          <div class="brief-section-title">${s.title}</div>
+          <div class="brief-mood">${s.items.join(' ')}</div>
+        </div>`;
+      }
+      return `<div class="brief-section">
+        <div class="brief-section-title">${s.title}</div>
+        <ul>${s.items.map(i => `<li>${i}</li>`).join('')}</ul>
+      </div>`;
+    }).join('');
+  }
+
+  content.classList.add('visible');
+  const ts = new Date(data.generated_at);
+  meta.textContent = `Generated ${ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · ${data.story_count} stories analysed · cached 30 min`;
+  meta.style.display = 'block';
+  document.getElementById('brief-subtitle').textContent = 'Last generated ' + ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+
+async function generateBrief() {
+  const key = localStorage.getItem('anthropic_key') || '';
+  const panel = document.getElementById('brief-panel');
+  const btn   = document.getElementById('brief-gen-btn');
+  const loading = document.getElementById('brief-loading');
+  const errEl   = document.getElementById('brief-error');
+  const content = document.getElementById('brief-content');
+
+  // Check cached brief in sessionStorage (30 min)
+  const cached = sessionStorage.getItem('brief_cache');
+  if (cached) {
+    try {
+      const parsed = JSON.parse(cached);
+      if (Date.now() - parsed._ts < 1800000) {
+        panel.classList.add('open');
+        renderBrief(parsed);
+        return;
+      }
+    } catch {}
+  }
+
+  if (!key) {
+    panel.classList.add('open');
+    document.getElementById('brief-key-row').style.display = 'flex';
+    document.getElementById('brief-key-input').focus();
+    return;
+  }
+
+  panel.classList.add('open');
+  btn.disabled = true;
+  btn.textContent = 'Generating…';
+  loading.style.display = 'flex';
+  errEl.style.display = 'none';
+  content.classList.remove('visible');
+  document.getElementById('brief-meta').style.display = 'none';
+
+  try {
+    const res  = await fetch('/api/brief', { method: 'POST', headers: { 'X-Api-Key': key } });
+    const data = await res.json();
+
+    if (data.error === 'no_key') {
+      errEl.textContent = 'No API key found. Enter your Anthropic key above.';
+      errEl.style.display = 'block';
+      document.getElementById('brief-key-row').style.display = 'flex';
+    } else if (data.error === 'bad_key') {
+      localStorage.removeItem('anthropic_key');
+      errEl.textContent = 'Invalid API key — please re-enter it above.';
+      errEl.style.display = 'block';
+      document.getElementById('brief-key-row').style.display = 'flex';
+    } else if (data.error) {
+      errEl.textContent = 'Error: ' + data.error;
+      errEl.style.display = 'block';
+    } else {
+      data._ts = Date.now();
+      sessionStorage.setItem('brief_cache', JSON.stringify(data));
+      renderBrief(data);
+    }
+  } catch (e) {
+    errEl.textContent = 'Could not reach server.';
+    errEl.style.display = 'block';
+  }
+
+  loading.style.display = 'none';
+  btn.disabled = false;
+  btn.textContent = 'Regenerate';
+}
+
 // ── Init ──────────────────────────────────────────────────────────
+hideBriefKeyRow();
 updateSession();
 setInterval(updateSession, 30_000);
 loadNews();
-setInterval(loadNews, 5 * 60_000); // auto-refresh every 5 min
+setInterval(loadNews, 5 * 60_000);
 </script>
 </body>
 </html>

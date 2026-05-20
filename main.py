@@ -1,12 +1,16 @@
 import asyncio
 import feedparser
 import httpx
-from fastapi import FastAPI
+import os
+import time
+import anthropic
+from fastapi import FastAPI, Header
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime, timezone
 from dateutil import parser as dateparser
+from typing import Optional
 import re
 
 app = FastAPI(title="Swing Trader News Dashboard")
@@ -330,6 +334,114 @@ async def get_news():
 @app.get("/api/session")
 async def get_session():
     return JSONResponse(market_session())
+
+
+_brief_cache: dict = {}
+_brief_cache_key: str = ""
+_brief_cached_at: float = 0.0
+
+
+@app.post("/api/brief")
+async def generate_brief(x_api_key: Optional[str] = Header(default=None)):
+    global _brief_cache, _brief_cache_key, _brief_cached_at
+
+    api_key = x_api_key or os.getenv("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        return JSONResponse({"error": "no_key"}, status_code=200)
+
+    # Cache per key for 30 minutes
+    cache_key = api_key[-8:]
+    if (
+        _brief_cache
+        and _brief_cache_key == cache_key
+        and time.time() - _brief_cached_at < 1800
+    ):
+        return JSONResponse(_brief_cache)
+
+    # Fetch latest news to summarise
+    async with httpx.AsyncClient(headers={"User-Agent": "Mozilla/5.0 SwingTraderDashboard/1.0"}) as client:
+        feed_tasks = [fetch_feed(client, feed) for feed in FEEDS]
+        feed_results, (mover_tickers, mover_data) = await asyncio.gather(
+            asyncio.gather(*feed_tasks),
+            fetch_mover_tickers(client),
+        )
+
+    all_items: list = []
+    for batch in feed_results:
+        all_items.extend(batch)
+
+    seen: set = set()
+    deduped: list = []
+    for item in all_items:
+        key = re.sub(r"\W+", "", item["title"].lower())[:60]
+        if key not in seen:
+            seen.add(key)
+            deduped.append(item)
+
+    # Build a compact headlines block for the prompt (top 50 by recency)
+    def _sort(i):
+        try:
+            return dateparser.parse(i["published"]) if i["published"] else datetime.min.replace(tzinfo=timezone.utc)
+        except Exception:
+            return datetime.min.replace(tzinfo=timezone.utc)
+
+    deduped.sort(key=_sort, reverse=True)
+
+    mover_lines = []
+    for sym, d in sorted(mover_data.items(), key=lambda x: x[1]["volume"], reverse=True)[:10]:
+        sign = "+" if d["pct_change"] >= 0 else ""
+        mover_lines.append(f"  {sym}: {sign}{d['pct_change']:.2f}% | Vol {d['volume']:,}")
+
+    headline_lines = []
+    for item in deduped[:50]:
+        ticker_note = f" [{item['ticker']}]" if item.get("ticker") else ""
+        headline_lines.append(f"- [{item['category'].upper()}]{ticker_note} {item['title']}")
+
+    prompt = f"""You are a brief, no-fluff market analyst for a swing trader who reads this once at night or in the morning.
+
+Today's top movers by volume:
+{chr(10).join(mover_lines) if mover_lines else "  (market closed / no data)"}
+
+Current headlines ({len(headline_lines)} stories):
+{chr(10).join(headline_lines)}
+
+Write a swing trader's brief in exactly this structure. Be specific and concise — one tight sentence per bullet, no filler words:
+
+**Market Mood**
+[One sentence on the overall tone: risk-on/risk-off, what's driving it]
+
+**Top Movers**
+[3–5 bullets. Format: TICKER — what happened and the likely cause]
+
+**Macro & Rates**
+[2–3 bullets on Fed, yields, inflation, GDP, or global macro themes worth tracking]
+
+**What to Watch**
+[2–3 bullets on setups, catalysts, or events coming up that could create swing opportunities]"""
+
+    try:
+        client = anthropic.Anthropic(api_key=api_key)
+        msg = client.messages.create(
+            model="claude-haiku-4-5-20251001",
+            max_tokens=700,
+            system="You are a concise swing trading market analyst. You write tight, specific, actionable briefs with zero fluff.",
+            messages=[{"role": "user", "content": prompt}],
+        )
+        brief_text = msg.content[0].text
+    except anthropic.AuthenticationError:
+        return JSONResponse({"error": "bad_key"}, status_code=200)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=200)
+
+    result = {
+        "brief": brief_text,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "story_count": len(deduped),
+    }
+    _brief_cache = result
+    _brief_cache_key = cache_key
+    _brief_cached_at = time.time()
+    return JSONResponse(result)
 
 
 @app.get("/", response_class=HTMLResponse)
