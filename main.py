@@ -481,7 +481,7 @@ Write the brief in exactly this structure. One tight sentence per bullet, zero f
     try:
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(
-            model_name="gemini-1.5-flash",
+            model_name="gemini-2.0-flash",
             system_instruction="You are a concise swing trading market analyst. Write tight, specific, actionable briefs with zero fluff.",
         )
         response = model.generate_content(prompt)
