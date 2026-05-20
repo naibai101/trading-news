@@ -131,10 +131,17 @@ async def fetch_mover_tickers(client: httpx.AsyncClient) -> tuple[set[str], dict
             for q in quotes:
                 sym = q.get("symbol", "").upper().strip()
                 if sym and re.match(r"^[A-Z]{1,5}$", sym):
+                    price     = q.get("regularMarketPrice", 0) or 0
+                    prev      = q.get("regularMarketPreviousClose", price) or price
                     ticker_data[sym] = {
-                        "pct_change": round(q.get("regularMarketChangePercent", 0), 2),
-                        "volume": q.get("regularMarketVolume", 0),
-                        "price": round(q.get("regularMarketPrice", 0), 2),
+                        "pct_change":  round(q.get("regularMarketChangePercent", 0), 2),
+                        "change":      round(price - prev, 2),
+                        "volume":      q.get("regularMarketVolume", 0),
+                        "avg_volume":  q.get("averageDailyVolume3Month", 0),
+                        "price":       round(price, 2),
+                        "day_high":    round(q.get("regularMarketDayHigh", 0), 2),
+                        "day_low":     round(q.get("regularMarketDayLow", 0), 2),
+                        "market_cap":  q.get("marketCap", 0),
                     }
         except Exception:
             pass
@@ -483,7 +490,7 @@ Write the brief in exactly this structure. One tight sentence per bullet, zero f
             f"gemini-1.5-flash:generateContent?key={api_key}"
         )
         payload = {
-            "system_instruction": {
+            "systemInstruction": {
                 "parts": [{"text": "You are a concise swing trading market analyst. Write tight, specific, actionable briefs with zero fluff."}]
             },
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],

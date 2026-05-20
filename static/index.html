@@ -435,12 +435,19 @@
     backdrop-filter: blur(10px);
     cursor: pointer;
     transition: border-color 0.18s, box-shadow 0.18s, transform 0.15s;
-    min-width: 110px;
+    min-width: 150px;
   }
   .ticker-card:hover {
     border-color: var(--border-hv);
     box-shadow: 0 0 16px var(--glow);
     transform: translateY(-2px);
+  }
+  .ticker-top {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 5px;
   }
   .ticker-sym {
     font-family: 'Nunito', sans-serif;
@@ -449,18 +456,29 @@
     color: var(--purple-1);
     letter-spacing: -0.2px;
   }
-  .ticker-pct {
+  .ticker-price {
     font-size: 0.82rem;
     font-weight: 700;
-    margin-top: 3px;
+    color: var(--text-main);
+  }
+  .ticker-pct {
+    font-size: 0.88rem;
+    font-weight: 800;
+    margin-bottom: 4px;
   }
   .ticker-pct.up   { color: var(--green); }
   .ticker-pct.down { color: var(--red-soft); }
-  .ticker-vol {
-    font-size: 0.68rem;
-    color: var(--text-faint);
-    margin-top: 3px;
+  .ticker-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 6px;
   }
+  .ticker-stat {
+    font-size: 0.64rem;
+    color: var(--text-faint);
+    line-height: 1.6;
+  }
+  .ticker-stat span { color: var(--text-dim); font-weight: 600; }
 
   /* ── Brief panel ───────────────────────────────────────────────── */
   .brief-panel {
@@ -968,14 +986,22 @@ function updateStats(items, moverList) {
     return;
   }
   scroll.innerHTML = moverList.map(m => {
-    const pct     = m.pct_change ?? 0;
-    const sign    = pct >= 0 ? '+' : '';
-    const cls     = pct >= 0 ? 'up' : 'down';
+    const pct  = m.pct_change ?? 0;
+    const sign = pct >= 0 ? '+' : '';
+    const cls  = pct >= 0 ? 'up' : 'down';
+    const chg  = m.change ?? 0;
+    const volRatio = m.avg_volume ? (m.volume / m.avg_volume).toFixed(1) : null;
     return `
       <div class="ticker-card" onclick="document.getElementById('search-input').value='${m.ticker}';setFilter('all');applyFilters()">
-        <div class="ticker-sym">${m.ticker}</div>
-        <div class="ticker-pct ${cls}">${sign}${pct.toFixed(2)}%</div>
-        <div class="ticker-vol">Vol ${fmtVol(m.volume)}</div>
+        <div class="ticker-top">
+          <span class="ticker-sym">${m.ticker}</span>
+          <span class="ticker-price">$${m.price?.toFixed(2) ?? '—'}</span>
+        </div>
+        <div class="ticker-pct ${cls}">${sign}${pct.toFixed(2)}% <span style="font-size:0.75rem;font-weight:600">(${chg >= 0 ? '+' : ''}$${chg.toFixed(2)})</span></div>
+        <div class="ticker-row">
+          <div class="ticker-stat">Vol <span>${fmtVol(m.volume)}</span>${volRatio ? ` <span style="color:${parseFloat(volRatio)>=1.5?'var(--gold)':'inherit'}">${volRatio}x avg</span>` : ''}</div>
+          <div class="ticker-stat">H <span>${m.day_high?.toFixed(2) ?? '—'}</span> L <span>${m.day_low?.toFixed(2) ?? '—'}</span></div>
+        </div>
       </div>`;
   }).join('');
 }
