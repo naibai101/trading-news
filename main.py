@@ -487,7 +487,7 @@ Write the brief in exactly this structure. One tight sentence per bullet, zero f
     try:
         gemini_url = (
             "https://generativelanguage.googleapis.com/v1beta/models/"
-            f"gemini-1.5-flash:generateContent?key={api_key}"
+            f"gemini-2.0-flash-lite:generateContent?key={api_key}"
         )
         payload = {
             "systemInstruction": {

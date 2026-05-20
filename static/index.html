@@ -192,9 +192,9 @@
     transition: border-color 0.2s, box-shadow 0.2s;
   }
   .stat-card:hover { border-color: var(--border-hv); box-shadow: 0 0 18px var(--glow); }
-  .stat-card .label { font-size: 0.7rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 4px; }
-  .stat-card .value { font-size: 1.45rem; font-weight: 800; color: var(--purple-1); font-family: 'Nunito', sans-serif; }
-  .stat-card .sub   { font-size: 0.7rem; color: var(--text-dim); margin-top: 2px; }
+  .stat-card .label { font-size: 0.72rem; color: var(--text-dim); margin-bottom: 5px; font-weight: 600; }
+  .stat-card .value { font-size: 1.5rem; font-weight: 800; color: var(--purple-1); font-family: 'Nunito', sans-serif; line-height: 1; }
+  .stat-card .sub   { font-size: 0.68rem; color: var(--text-faint); margin-top: 4px; }
 
   /* ── Filter bar ────────────────────────────────────────────────── */
   .filter-bar {
@@ -204,7 +204,7 @@
     flex-wrap: wrap;
     align-items: center;
   }
-  .filter-label { font-size: 0.72rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.6px; margin-right: 4px; }
+  .filter-label { font-size: 0.72rem; color: var(--text-faint); margin-right: 2px; font-weight: 600; }
 
   .chip {
     padding: 5px 14px;
@@ -410,10 +410,9 @@
     margin-bottom: 22px;
   }
   .movers-strip-label {
-    font-size: 0.7rem;
-    color: var(--text-faint);
-    text-transform: uppercase;
-    letter-spacing: 0.6px;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    font-weight: 600;
     margin-bottom: 10px;
   }
   .movers-scroll {
@@ -716,7 +715,7 @@
         <div class="brief-icon" id="brief-panel-icon">✦</div>
         <div>
           <div class="brief-title" id="brief-panel-title">Market Brief</div>
-          <div class="brief-subtitle" id="brief-subtitle">AI summary of today's market — click to expand</div>
+          <div class="brief-subtitle" id="brief-subtitle">click to read your brief ✦</div>
         </div>
       </div>
       <button class="brief-generate-btn" id="brief-gen-btn" onclick="event.stopPropagation();generateBrief()">Generate</button>
@@ -743,16 +742,16 @@
 
   <!-- ── Stats strip ── -->
   <div class="stats-strip" id="stats-strip">
-    <div class="stat-card"><div class="label">Total Stories</div><div class="value" id="stat-total">—</div><div class="sub">across all sources</div></div>
-    <div class="stat-card"><div class="label">Catalyst / Movers</div><div class="value" id="stat-movers">—</div><div class="sub">price-moving events</div></div>
-    <div class="stat-card"><div class="label">Macro / Rates</div><div class="value" id="stat-macro">—</div><div class="sub">fed, gdp, yields</div></div>
-    <div class="stat-card"><div class="label">Earnings</div><div class="value" id="stat-earnings">—</div><div class="sub">corporate results</div></div>
-    <div class="stat-card"><div class="label">Regulatory</div><div class="value" id="stat-reg">—</div><div class="sub">sec, fed speeches</div></div>
+    <div class="stat-card"><div class="label">✦ stories today</div><div class="value" id="stat-total">—</div><div class="sub">from all sources</div></div>
+    <div class="stat-card"><div class="label">🚀 moving</div><div class="value" id="stat-movers">—</div><div class="sub">catalyst stories</div></div>
+    <div class="stat-card"><div class="label">🌐 macro & rates</div><div class="value" id="stat-macro">—</div><div class="sub">fed, gdp, yields</div></div>
+    <div class="stat-card"><div class="label">💰 earnings</div><div class="value" id="stat-earnings">—</div><div class="sub">corporate results</div></div>
+    <div class="stat-card"><div class="label">📋 regulatory</div><div class="value" id="stat-reg">—</div><div class="sub">sec & fed</div></div>
   </div>
 
   <!-- ── Movers strip ── -->
   <div class="movers-strip">
-    <div class="movers-strip-label">Today's Movers — sorted by volume</div>
+    <div class="movers-strip-label">what's moving today ✦</div>
     <div class="movers-scroll" id="movers-scroll">
       <span style="font-size:0.78rem;color:var(--text-faint);align-self:center">Loading…</span>
     </div>
@@ -760,7 +759,7 @@
 
   <!-- ── Filters ── -->
   <div class="filter-bar">
-    <span class="filter-label">Filter</span>
+    <span class="filter-label">show me</span>
     <button class="chip active" data-cat="all" onclick="setFilter('all')">All</button>
     <button class="chip" data-cat="macro" onclick="setFilter('macro')">
       📊 Macro
