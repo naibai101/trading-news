@@ -1,0 +1,777 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>naibai's trading desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Quicksand:wght@400;500;600;700&display=swap" />
+<style>
+  /* ── Reset & base ──────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-deep:    #1a1438;
+    --bg-mid:     #231a4f;
+    --bg-panel:   rgba(36, 26, 72, 0.82);
+    --bg-card:    rgba(44, 32, 88, 0.72);
+    --bg-card-hv: rgba(58, 42, 110, 0.88);
+    --purple-1:   #c4b5fd;
+    --purple-2:   #a78bfa;
+    --purple-3:   #7c3aed;
+    --pink:       #f0abfc;
+    --blue-soft:  #93c5fd;
+    --gold:       #fcd34d;
+    --green:      #6ee7b7;
+    --amber:      #fbbf24;
+    --red-soft:   #fca5a5;
+    --text-main:  #e9d5ff;
+    --text-dim:   #a78bfa;
+    --text-faint: #6d5e8a;
+    --border:     rgba(167, 139, 250, 0.18);
+    --border-hv:  rgba(167, 139, 250, 0.42);
+    --glow:       rgba(167, 139, 250, 0.15);
+    --radius-card: 18px;
+    --radius-pill: 999px;
+  }
+
+  html, body {
+    min-height: 100vh;
+    font-family: 'Quicksand', 'Nunito', sans-serif;
+    background: var(--bg-deep);
+    color: var(--text-main);
+    overflow-x: hidden;
+  }
+
+  /* ── Bokeh background ──────────────────────────────────────────── */
+  #bokeh-canvas {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+  }
+
+  /* ── Fairy lights ──────────────────────────────────────────────── */
+  .fairy-string {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  /* ── Layout ────────────────────────────────────────────────────── */
+  .page-wrap {
+    position: relative;
+    z-index: 2;
+    max-width: 1380px;
+    margin: 0 auto;
+    padding: 0 20px 60px;
+  }
+
+  /* ── Header ────────────────────────────────────────────────────── */
+  header {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 28px 0 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+  }
+
+  .avatar-ring {
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--purple-2), var(--pink));
+    padding: 3px;
+    flex-shrink: 0;
+    box-shadow: 0 0 22px rgba(167,139,250,0.45);
+  }
+  .avatar-ring img {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--bg-mid);
+  }
+
+  .header-text h1 {
+    font-family: 'Nunito', sans-serif;
+    font-size: 1.55rem;
+    font-weight: 800;
+    color: var(--purple-1);
+    line-height: 1;
+    letter-spacing: -0.3px;
+  }
+  .header-text p {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  .header-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-wrap: wrap;
+  }
+
+  /* Session pill */
+  .session-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 14px;
+    border-radius: var(--radius-pill);
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: var(--text-main);
+    backdrop-filter: blur(8px);
+  }
+  .session-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    animation: pulse-dot 2s ease-in-out infinite;
+  }
+  @keyframes pulse-dot {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50%      { opacity: 0.5; transform: scale(1.35); }
+  }
+
+  .refresh-btn {
+    padding: 7px 16px;
+    border-radius: var(--radius-pill);
+    background: linear-gradient(135deg, var(--purple-3), #5b21b6);
+    border: none;
+    color: #fff;
+    font-family: inherit;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: box-shadow 0.2s, transform 0.15s;
+    box-shadow: 0 4px 14px rgba(124,58,237,0.4);
+  }
+  .refresh-btn:hover { box-shadow: 0 6px 22px rgba(124,58,237,0.6); transform: translateY(-1px); }
+  .refresh-btn:active { transform: translateY(0); }
+  .refresh-btn.spinning svg { animation: spin 0.9s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .last-updated {
+    font-size: 0.72rem;
+    color: var(--text-faint);
+  }
+
+  /* ── Stats strip ───────────────────────────────────────────────── */
+  .stats-strip {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 28px;
+    flex-wrap: wrap;
+  }
+  .stat-card {
+    flex: 1;
+    min-width: 130px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    padding: 14px 18px;
+    backdrop-filter: blur(10px);
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .stat-card:hover { border-color: var(--border-hv); box-shadow: 0 0 18px var(--glow); }
+  .stat-card .label { font-size: 0.7rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 4px; }
+  .stat-card .value { font-size: 1.45rem; font-weight: 800; color: var(--purple-1); font-family: 'Nunito', sans-serif; }
+  .stat-card .sub   { font-size: 0.7rem; color: var(--text-dim); margin-top: 2px; }
+
+  /* ── Filter bar ────────────────────────────────────────────────── */
+  .filter-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 22px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .filter-label { font-size: 0.72rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.6px; margin-right: 4px; }
+
+  .chip {
+    padding: 5px 14px;
+    border-radius: var(--radius-pill);
+    border: 1px solid var(--border);
+    background: var(--bg-card);
+    color: var(--text-dim);
+    font-family: inherit;
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.18s;
+    backdrop-filter: blur(6px);
+  }
+  .chip:hover    { border-color: var(--purple-2); color: var(--purple-1); }
+  .chip.active   { background: linear-gradient(135deg, rgba(124,58,237,0.55), rgba(109,40,217,0.55)); border-color: var(--purple-2); color: #fff; box-shadow: 0 0 12px rgba(167,139,250,0.25); }
+
+  .search-wrap {
+    margin-left: auto;
+    position: relative;
+  }
+  .search-wrap svg {
+    position: absolute;
+    left: 11px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-faint);
+    pointer-events: none;
+  }
+  #search-input {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-pill);
+    color: var(--text-main);
+    font-family: inherit;
+    font-size: 0.78rem;
+    padding: 7px 14px 7px 34px;
+    width: 200px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    backdrop-filter: blur(6px);
+  }
+  #search-input::placeholder { color: var(--text-faint); }
+  #search-input:focus { border-color: var(--purple-2); box-shadow: 0 0 12px rgba(167,139,250,0.2); }
+
+  /* ── Grid ──────────────────────────────────────────────────────── */
+  #news-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    gap: 16px;
+  }
+
+  /* ── News card ─────────────────────────────────────────────────── */
+  .news-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    padding: 18px 20px 16px;
+    backdrop-filter: blur(12px);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+    cursor: pointer;
+    text-decoration: none;
+    color: inherit;
+    position: relative;
+    overflow: hidden;
+  }
+  .news-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius-card);
+    background: linear-gradient(135deg, rgba(167,139,250,0.06), transparent 60%);
+    pointer-events: none;
+  }
+  .news-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 32px rgba(124,58,237,0.22), 0 0 0 1px var(--border-hv);
+    border-color: var(--border-hv);
+    background: var(--bg-card-hv);
+  }
+
+  .card-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .cat-badge {
+    padding: 3px 10px;
+    border-radius: var(--radius-pill);
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .cat-macro      { background: rgba(147,197,253,0.18); color: var(--blue-soft); }
+  .cat-markets    { background: rgba(196,181,253,0.18); color: var(--purple-1); }
+  .cat-earnings   { background: rgba(252,211,77,0.18);  color: var(--gold); }
+  .cat-sector     { background: rgba(240,171,252,0.18); color: var(--pink); }
+  .cat-fed        { background: rgba(110,231,183,0.18); color: var(--green); }
+  .cat-regulatory { background: rgba(251,191,36,0.18);  color: var(--amber); }
+
+  .source-name {
+    font-size: 0.68rem;
+    color: var(--text-faint);
+    font-weight: 600;
+  }
+
+  .time-ago {
+    font-size: 0.65rem;
+    color: var(--text-faint);
+    margin-left: auto;
+  }
+
+  .card-title {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--text-main);
+    line-height: 1.42;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .news-card:hover .card-title { color: var(--purple-1); }
+
+  .card-summary {
+    font-size: 0.78rem;
+    color: var(--text-dim);
+    line-height: 1.55;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .card-footer {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 2px;
+  }
+  .bias-tag {
+    font-size: 0.62rem;
+    color: var(--text-faint);
+    background: rgba(109,94,138,0.22);
+    padding: 2px 8px;
+    border-radius: var(--radius-pill);
+  }
+  .read-link {
+    margin-left: auto;
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--purple-2);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    transition: color 0.15s;
+  }
+  .read-link:hover { color: var(--pink); }
+
+  /* ── Loading / empty states ────────────────────────────────────── */
+  #loading-state {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding: 80px 20px;
+    color: var(--text-dim);
+  }
+  .loader-ring {
+    width: 48px;
+    height: 48px;
+    border: 3px solid var(--border);
+    border-top-color: var(--purple-2);
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+  }
+
+  #empty-state {
+    grid-column: 1 / -1;
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-faint);
+    display: none;
+  }
+  #empty-state svg { margin-bottom: 12px; opacity: 0.4; }
+
+  /* ── Scrollbar ─────────────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(167,139,250,0.3); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(167,139,250,0.55); }
+
+  /* ── Legend strip ──────────────────────────────────────────────── */
+  .legend {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+    padding: 12px 16px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    backdrop-filter: blur(8px);
+  }
+  .legend-title { font-size: 0.7rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.5px; align-self: center; margin-right: 4px; }
+  .legend-item  { display: flex; align-items: center; gap: 6px; font-size: 0.7rem; color: var(--text-dim); }
+  .legend-dot   { width: 8px; height: 8px; border-radius: 50%; }
+
+  /* ── Responsive ────────────────────────────────────────────────── */
+  @media (max-width: 600px) {
+    #news-grid { grid-template-columns: 1fr; }
+    .header-right { width: 100%; justify-content: flex-start; }
+    #search-input { width: 140px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Fairy lights SVG (top of page) -->
+<svg class="fairy-string" viewBox="0 0 1400 60" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bulb" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#fff" stop-opacity="0.95"/>
+      <stop offset="100%" stop-color="#c4b5fd" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <path d="M0,14 Q175,40 350,14 Q525,-12 700,14 Q875,40 1050,14 Q1225,-12 1400,14"
+        fill="none" stroke="rgba(167,139,250,0.25)" stroke-width="1.5"/>
+  <!-- Bulbs -->
+  <g id="bulbs"></g>
+</svg>
+
+<canvas id="bokeh-canvas"></canvas>
+
+<div class="page-wrap">
+  <!-- ── Header ── -->
+  <header>
+    <div class="avatar-ring">
+      <img src="" alt="naibai" id="avatar-img" onerror="this.style.display='none'" />
+    </div>
+    <div class="header-text">
+      <h1>naibai's trading desk ✦</h1>
+      <p>swing trader · pre &amp; post market news · credible, multi-source</p>
+    </div>
+    <div class="header-right">
+      <div class="session-pill">
+        <span class="session-dot" id="session-dot" style="background:#94a3b8"></span>
+        <span id="session-label">Loading…</span>
+        <span id="session-time" style="opacity:0.6;font-weight:400"></span>
+      </div>
+      <button class="refresh-btn" id="refresh-btn" onclick="loadNews()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:5px"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+        Refresh
+      </button>
+      <span class="last-updated" id="last-updated"></span>
+    </div>
+  </header>
+
+  <!-- ── Stats strip ── -->
+  <div class="stats-strip" id="stats-strip">
+    <div class="stat-card"><div class="label">Total Stories</div><div class="value" id="stat-total">—</div><div class="sub">across all sources</div></div>
+    <div class="stat-card"><div class="label">Macro / Rates</div><div class="value" id="stat-macro">—</div><div class="sub">fed, gdp, yields</div></div>
+    <div class="stat-card"><div class="label">Earnings</div><div class="value" id="stat-earnings">—</div><div class="sub">corporate results</div></div>
+    <div class="stat-card"><div class="label">Sectors</div><div class="value" id="stat-sector">—</div><div class="sub">tech, energy, etc.</div></div>
+    <div class="stat-card"><div class="label">Regulatory</div><div class="value" id="stat-reg">—</div><div class="sub">sec, fed speeches</div></div>
+  </div>
+
+  <!-- ── Source bias legend ── -->
+  <div class="legend">
+    <span class="legend-title">Source bias</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#6ee7b7"></span> Official / Regulatory</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#93c5fd"></span> Center</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#c4b5fd"></span> Center-Left</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#fcd34d"></span> Center-Right</span>
+    <span class="legend-item"><span class="legend-dot" style="background:#f0abfc"></span> Varies</span>
+    <span style="margin-left:auto;font-size:0.68rem;color:var(--text-faint)">Multiple sources = less bias ✦</span>
+  </div>
+
+  <!-- ── Filters ── -->
+  <div class="filter-bar">
+    <span class="filter-label">Filter</span>
+    <button class="chip active" data-cat="all" onclick="setFilter('all')">All</button>
+    <button class="chip" data-cat="macro" onclick="setFilter('macro')">
+      📊 Macro
+    </button>
+    <button class="chip" data-cat="markets" onclick="setFilter('markets')">
+      📈 Markets
+    </button>
+    <button class="chip" data-cat="earnings" onclick="setFilter('earnings')">
+      💰 Earnings
+    </button>
+    <button class="chip" data-cat="sector" onclick="setFilter('sector')">
+      🏭 Sectors
+    </button>
+    <button class="chip" data-cat="fed" onclick="setFilter('fed')">
+      🏦 Fed / Rates
+    </button>
+    <button class="chip" data-cat="regulatory" onclick="setFilter('regulatory')">
+      📋 Regulatory
+    </button>
+    <div class="search-wrap">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input type="text" id="search-input" placeholder="Search ticker, topic…" oninput="applyFilters()" />
+    </div>
+  </div>
+
+  <!-- ── News grid ── -->
+  <div id="news-grid">
+    <div id="loading-state">
+      <div class="loader-ring"></div>
+      <span style="font-size:0.85rem">Fetching market news…</span>
+    </div>
+    <div id="empty-state">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.172 16.172a4 4 0 0 1 5.656 0"/><circle cx="9" cy="10" r="1"/><circle cx="15" cy="10" r="1"/><circle cx="12" cy="21" r="9"/></svg>
+      <p style="margin-top:8px;font-size:0.85rem">No stories match that filter.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────
+let allItems = [];
+let activeFilter = 'all';
+
+// ── Bokeh background ──────────────────────────────────────────────
+(function initBokeh() {
+  const canvas = document.getElementById('bokeh-canvas');
+  const ctx = canvas.getContext('2d');
+
+  const orbs = [];
+  const colors = [
+    'rgba(124,58,237,', 'rgba(167,139,250,', 'rgba(109,40,217,',
+    'rgba(216,180,254,', 'rgba(240,171,252,', 'rgba(91,33,182,',
+    'rgba(147,51,234,', 'rgba(196,181,253,',
+  ];
+
+  function resize() {
+    canvas.width  = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  for (let i = 0; i < 38; i++) {
+    orbs.push({
+      x: Math.random() * window.innerWidth,
+      y: Math.random() * window.innerHeight,
+      r: 30 + Math.random() * 120,
+      color: colors[Math.floor(Math.random() * colors.length)],
+      alpha: 0.04 + Math.random() * 0.09,
+      dx: (Math.random() - 0.5) * 0.18,
+      dy: (Math.random() - 0.5) * 0.15,
+      pulse: Math.random() * Math.PI * 2,
+      pulseSpeed: 0.005 + Math.random() * 0.008,
+    });
+  }
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Deep gradient backdrop
+    const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+    grad.addColorStop(0, '#1a1438');
+    grad.addColorStop(0.5, '#1e1645');
+    grad.addColorStop(1, '#16122e');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    orbs.forEach(o => {
+      o.pulse += o.pulseSpeed;
+      const a = o.alpha + Math.sin(o.pulse) * 0.025;
+      const rg = ctx.createRadialGradient(o.x, o.y, 0, o.x, o.y, o.r);
+      rg.addColorStop(0, o.color + Math.min(a * 2.2, 0.28) + ')');
+      rg.addColorStop(1, o.color + '0)');
+      ctx.beginPath();
+      ctx.arc(o.x, o.y, o.r, 0, Math.PI * 2);
+      ctx.fillStyle = rg;
+      ctx.fill();
+
+      o.x += o.dx;
+      o.y += o.dy;
+      if (o.x < -o.r)  o.x = canvas.width  + o.r;
+      if (o.x > canvas.width  + o.r) o.x = -o.r;
+      if (o.y < -o.r)  o.y = canvas.height + o.r;
+      if (o.y > canvas.height + o.r) o.y = -o.r;
+    });
+
+    requestAnimationFrame(draw);
+  }
+  draw();
+})();
+
+// ── Fairy lights ──────────────────────────────────────────────────
+(function initLights() {
+  const svg = document.querySelector('.fairy-string');
+  const g   = svg.querySelector('#bulbs');
+  const positions = [];
+  for (let i = 0; i < 28; i++) positions.push(i / 27);
+
+  positions.forEach((t, i) => {
+    const x = t * 1400;
+    // Replicate the path y: Q175,40 Q525,-12 etc.
+    const seg = Math.floor(t * 4);
+    const segT = (t * 4) - seg;
+    const yVals = [14, 40, 14, -12, 14, 40, 14, -12, 14];
+    const y0 = yVals[seg * 2];
+    const yC = yVals[seg * 2 + 1];
+    const y1 = yVals[seg * 2 + 2];
+    const y = (1 - segT) * (1 - segT) * y0 + 2 * (1 - segT) * segT * yC + segT * segT * y1;
+
+    const hues = [270, 300, 200, 320, 260];
+    const hue  = hues[i % hues.length];
+
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', x);
+    circle.setAttribute('cy', Math.max(4, Math.min(56, y + 8)));
+    circle.setAttribute('r', 3.5);
+    circle.setAttribute('fill', `hsl(${hue},80%,75%)`);
+    circle.setAttribute('opacity', '0.85');
+    circle.style.animation = `pulse-dot ${1.5 + Math.random()}s ease-in-out ${Math.random() * 2}s infinite`;
+    g.appendChild(circle);
+
+    // Glow
+    const glow = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    glow.setAttribute('cx', x);
+    glow.setAttribute('cy', Math.max(4, Math.min(56, y + 8)));
+    glow.setAttribute('r', 8);
+    glow.setAttribute('fill', `hsl(${hue},80%,75%)`);
+    glow.setAttribute('opacity', '0.12');
+    g.appendChild(glow);
+  });
+})();
+
+// ── Utilities ─────────────────────────────────────────────────────
+function timeAgo(iso) {
+  if (!iso) return '';
+  const diff = (Date.now() - new Date(iso)) / 1000;
+  if (diff < 60)   return `${Math.floor(diff)}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400)return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
+function catClass(cat) {
+  return `cat-${cat}`;
+}
+
+function catLabel(cat) {
+  const map = { macro:'Macro', markets:'Markets', earnings:'Earnings', sector:'Sector', fed:'Fed/Rates', regulatory:'Regulatory' };
+  return map[cat] || cat;
+}
+
+function biasColor(bias) {
+  const map = { 'official':'#6ee7b7','center':'#93c5fd','center-left':'#c4b5fd','center-right':'#fcd34d','varies':'#f0abfc' };
+  return map[bias] || '#6d5e8a';
+}
+
+function buildCard(item) {
+  const ago = timeAgo(item.published);
+  return `
+    <a class="news-card" href="${item.link}" target="_blank" rel="noopener noreferrer">
+      <div class="card-meta">
+        <span class="cat-badge ${catClass(item.category)}">${catLabel(item.category)}</span>
+        <span class="source-name">${item.source}</span>
+        <span class="time-ago">${ago}</span>
+      </div>
+      <div class="card-title">${item.title}</div>
+      ${item.summary ? `<div class="card-summary">${item.summary}</div>` : ''}
+      <div class="card-footer">
+        <span class="bias-tag" title="Editorial lean" style="color:${biasColor(item.bias)};background:${biasColor(item.bias)}18">${item.bias}</span>
+        <a class="read-link" href="${item.link}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">
+          Read
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
+        </a>
+      </div>
+    </a>`;
+}
+
+function updateStats(items) {
+  document.getElementById('stat-total').textContent   = items.length;
+  document.getElementById('stat-macro').textContent   = items.filter(i => i.category === 'macro' || i.category === 'fed').length;
+  document.getElementById('stat-earnings').textContent= items.filter(i => i.category === 'earnings').length;
+  document.getElementById('stat-sector').textContent  = items.filter(i => i.category === 'sector').length;
+  document.getElementById('stat-reg').textContent     = items.filter(i => i.category === 'regulatory').length;
+}
+
+function applyFilters() {
+  const q     = document.getElementById('search-input').value.toLowerCase().trim();
+  const grid  = document.getElementById('news-grid');
+  const empty = document.getElementById('empty-state');
+
+  let filtered = allItems;
+  if (activeFilter !== 'all') filtered = filtered.filter(i => i.category === activeFilter);
+  if (q) filtered = filtered.filter(i =>
+    i.title.toLowerCase().includes(q) ||
+    i.source.toLowerCase().includes(q) ||
+    (i.summary || '').toLowerCase().includes(q)
+  );
+
+  // Remove old cards (keep loading/empty states)
+  grid.querySelectorAll('.news-card').forEach(el => el.remove());
+
+  if (filtered.length === 0) {
+    empty.style.display = 'flex';
+    empty.style.flexDirection = 'column';
+    empty.style.alignItems = 'center';
+  } else {
+    empty.style.display = 'none';
+    filtered.forEach(item => {
+      grid.insertAdjacentHTML('beforeend', buildCard(item));
+    });
+  }
+}
+
+function setFilter(cat) {
+  activeFilter = cat;
+  document.querySelectorAll('.chip').forEach(c => c.classList.toggle('active', c.dataset.cat === cat));
+  applyFilters();
+}
+
+async function updateSession() {
+  try {
+    const res  = await fetch('/api/session');
+    const data = await res.json();
+    document.getElementById('session-dot').style.background  = data.color;
+    document.getElementById('session-label').textContent     = data.label;
+    document.getElementById('session-time').textContent      = data.et_time;
+  } catch {}
+}
+
+async function loadNews() {
+  const btn  = document.getElementById('refresh-btn');
+  const grid = document.getElementById('news-grid');
+
+  btn.classList.add('spinning');
+  grid.querySelectorAll('.news-card').forEach(el => el.remove());
+  document.getElementById('loading-state').style.display = 'flex';
+  document.getElementById('empty-state').style.display   = 'none';
+
+  try {
+    const res  = await fetch('/api/news');
+    const data = await res.json();
+    allItems   = data.items || [];
+
+    document.getElementById('loading-state').style.display = 'none';
+    updateStats(allItems);
+    applyFilters();
+
+    const ts = new Date(data.fetched_at);
+    document.getElementById('last-updated').textContent =
+      'Updated ' + ts.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } catch (err) {
+    document.getElementById('loading-state').innerHTML =
+      '<p style="color:var(--red-soft);font-size:0.85rem">⚠ Could not fetch news. Is the server running?</p>';
+  }
+  btn.classList.remove('spinning');
+}
+
+// ── Init ──────────────────────────────────────────────────────────
+updateSession();
+setInterval(updateSession, 30_000);
+loadNews();
+setInterval(loadNews, 5 * 60_000); // auto-refresh every 5 min
+</script>
+</body>
+</html>
