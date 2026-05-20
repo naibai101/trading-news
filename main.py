@@ -149,10 +149,44 @@ def is_catalyst(text: str) -> bool:
     return any(phrase in t for phrase in CATALYST_PHRASES)
 
 
+# Words that look like tickers but aren't — common in financial headlines
+TICKER_BLOCKLIST = {
+    # Articles / pronouns / conjunctions
+    "A","I","AM","AN","AS","AT","BE","BY","DO","GO","HE","IF","IN","IS","IT",
+    "ME","MY","NO","OF","OK","ON","OR","SO","TO","UP","US","WE",
+    "AND","ARE","BUT","CAN","DID","FOR","GET","GOT","HAS","HAD","HIM","HIS",
+    "HOW","ITS","LET","MAY","NOT","NOW","OFF","OLD","ONE","OUR","OUT","OWN",
+    "PUT","SAY","SHE","THE","TOO","TWO","USE","WAS","WAY","WHO","WHY",
+    "WILL","WITH","ALSO","BEEN","FROM","HAVE","JUST","MORE","MOST","OVER",
+    "SAID","SUCH","THAN","THAT","THEM","THEN","THEY","THIS","VERY","WANT",
+    "WERE","WHAT","WHEN","YOUR","AMID","AFTER","ABOVE","BELOW","SINCE",
+    "UNTIL","WHILE","ABOUT","COULD","WOULD","SHOULD",
+    # Common verb forms used as uppercase in headlines
+    "ADDS","CUTS","GETS","PUTS","ROSE","FELL","HITS","SETS","SEES","EYES",
+    "WINS","ENDS","TOPS","SAYS","MAKES","TAKES","LEADS","BEATS","LOSES",
+    "PLANS","SHOWS","FACES","HOLDS","WARNS","BACKS","NEEDS","KEEPS","RISES",
+    "FALLS","DROPS","GAINS","SURGES","JUMPS","SLIDES","SINKS","SOARS",
+    # Financial/market acronyms that aren't tickers
+    "CEO","CFO","COO","CTO","IPO","SEC","FED","GDP","CPI","PPI","EPS","ETF",
+    "AUM","ROI","YOY","QOQ","YTD","ATH","ATL","RSI","SMA","EMA","MACD",
+    "NYSE","CBOE","FOMC","OPEC","NATO","IMF","WTO","ECB","BOJ","RBI",
+    # Misc headline words
+    "LIVE","NEWS","HIGH","LOWS","RATE","BANK","CORP","LAST","NEXT","FULL",
+    "HALF","AMID","INTO","ONTO","UPON","EVEN","EACH","BOTH","MANY","MUCH",
+    "ONLY","SOME","THEY","THEM","BEEN","DOES","DONE","GAVE","GIVE","GONE",
+    "GROW","GREW","KNOW","KNEW","SHOW","SHOWN","TAKE","TOOK","COME","CAME",
+    "HOLD","HELD","SELL","SOLD","FIND","FOUND","HEAR","HEARD","KEEP","KEPT",
+    "SEND","SENT","SPAN","SIGN","DEAL","RISK","LACK","LOSS","GAIN","COST",
+    "RISE","FALL","YEAR","WEEK","DAYS","TIME","DATA","FIRM","FUND","BOND",
+    "DEBT","CASH","LOAN","SALE","UNIT","SITE","TEAM","ROLE","TYPE","FORM",
+    "AI","IT","UK","EU","US",
+}
+
+
 def mentions_ticker(text: str, tickers: set[str]) -> bool:
-    """Check if text contains any mover ticker as a standalone word."""
-    words = re.findall(r"\b[A-Z]{1,5}\b", text.upper())
-    return bool(set(words) & tickers)
+    """Match tickers that appear already-uppercase in original text."""
+    words = set(re.findall(r"\b[A-Z]{2,5}\b", text))  # no .upper() — match original case
+    return bool((words - TICKER_BLOCKLIST) & tickers)
 
 
 def is_trading_relevant(text: str) -> bool:
@@ -256,8 +290,8 @@ async def get_news():
         full_text = item["title"] + " " + (item["summary"] or "")
         item["is_catalyst"] = is_catalyst(full_text)
 
-        words = set(re.findall(r"\b[A-Z]{1,5}\b", full_text.upper()))
-        mentioned = words & mover_tickers
+        words = set(re.findall(r"\b[A-Z]{2,5}\b", full_text))  # match original case only
+        mentioned = (words - TICKER_BLOCKLIST) & mover_tickers
         if mentioned:
             best = max(mentioned, key=lambda t: mover_data.get(t, {}).get("volume", 0))
             item["ticker"]        = best
