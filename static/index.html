@@ -474,10 +474,11 @@
   <!-- ── Stats strip ── -->
   <div class="stats-strip" id="stats-strip">
     <div class="stat-card"><div class="label">Total Stories</div><div class="value" id="stat-total">—</div><div class="sub">across all sources</div></div>
+    <div class="stat-card"><div class="label">Catalyst / Movers</div><div class="value" id="stat-movers">—</div><div class="sub">price-moving events</div></div>
     <div class="stat-card"><div class="label">Macro / Rates</div><div class="value" id="stat-macro">—</div><div class="sub">fed, gdp, yields</div></div>
     <div class="stat-card"><div class="label">Earnings</div><div class="value" id="stat-earnings">—</div><div class="sub">corporate results</div></div>
-    <div class="stat-card"><div class="label">Sectors</div><div class="value" id="stat-sector">—</div><div class="sub">tech, energy, etc.</div></div>
     <div class="stat-card"><div class="label">Regulatory</div><div class="value" id="stat-reg">—</div><div class="sub">sec, fed speeches</div></div>
+    <div class="stat-card" style="min-width:200px"><div class="label">Today's Movers</div><div class="value" id="stat-tickers" style="font-size:0.7rem;font-weight:700;color:var(--purple-1);line-height:1.6">—</div><div class="sub">gainers · losers · active</div></div>
   </div>
 
   <!-- ── Source bias legend ── -->
@@ -672,21 +673,8 @@ function biasColor(bias) {
   return map[bias] || '#6d5e8a';
 }
 
-const MOVER_KEYWORDS = [
-  'surges','surge','surged','jumps','jump','jumped','plunges','plunge','plunged',
-  'tumbles','tumble','tumbled','rallies','rally','rallied','spikes','spike','spiked',
-  'soars','soar','soared','slumps','slump','slumped','sinks','sink','sank','slides',
-  'slide','slid','climbs','climb','climbed','drops','drop','dropped','falls','fall','fell',
-  'rises','rise','rose','gains','gain','gained','loses','loss','lost','crashes','crash',
-  'crashed','record high','record low','52-week','all-time high','all-time low',
-  'breakout','breakdown','upgrade','downgrade','price target','beat','miss',
-  'blowout','guidance cut','guidance raised','% gain','% loss','% drop','% rise',
-  '% jump','% surge','% plunge','short squeeze','halted','halts',
-];
-
 function isMover(item) {
-  const text = (item.title + ' ' + (item.summary || '')).toLowerCase();
-  return MOVER_KEYWORDS.some(kw => text.includes(kw));
+  return item.is_mover_news === true;
 }
 
 function buildCard(item) {
@@ -711,12 +699,19 @@ function buildCard(item) {
     </div>`;
 }
 
-function updateStats(items) {
-  document.getElementById('stat-total').textContent   = items.length;
-  document.getElementById('stat-macro').textContent   = items.filter(i => i.category === 'macro' || i.category === 'fed').length;
-  document.getElementById('stat-earnings').textContent= items.filter(i => i.category === 'earnings').length;
-  document.getElementById('stat-sector').textContent  = items.filter(i => i.category === 'sector').length;
-  document.getElementById('stat-reg').textContent     = items.filter(i => i.category === 'regulatory').length;
+function updateStats(items, moverTickers) {
+  document.getElementById('stat-total').textContent    = items.length;
+  document.getElementById('stat-movers').textContent   = items.filter(i => i.is_mover_news).length;
+  document.getElementById('stat-macro').textContent    = items.filter(i => i.category === 'macro' || i.category === 'fed').length;
+  document.getElementById('stat-earnings').textContent = items.filter(i => i.category === 'earnings').length;
+  document.getElementById('stat-reg').textContent      = items.filter(i => i.category === 'regulatory').length;
+
+  const tickerEl = document.getElementById('stat-tickers');
+  if (moverTickers && moverTickers.length) {
+    tickerEl.textContent = moverTickers.slice(0, 20).join('  ·  ');
+  } else {
+    tickerEl.textContent = 'market closed';
+  }
 }
 
 function applyFilters() {
@@ -779,7 +774,7 @@ async function loadNews() {
     allItems   = data.items || [];
 
     document.getElementById('loading-state').style.display = 'none';
-    updateStats(allItems);
+    updateStats(allItems, data.mover_tickers || []);
     applyFilters();
 
     const ts = new Date(data.fetched_at);

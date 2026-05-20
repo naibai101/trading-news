@@ -53,6 +53,101 @@ TRADING_KEYWORDS = [
     "bank", "financial", "dividend", "buyback", "short", "options", "futures",
 ]
 
+# High-signal catalyst phrases — price-moving corporate events
+CATALYST_PHRASES = [
+    # Earnings
+    "beats estimates", "misses estimates", "beats expectations", "misses expectations",
+    "earnings beat", "earnings miss", "earnings surprise", "blowout quarter",
+    "raises guidance", "cuts guidance", "raises outlook", "lowers outlook",
+    "guidance raised", "guidance cut", "guidance withdrawn",
+    "revenue beat", "revenue miss", "eps beat", "eps miss",
+    # M&A
+    "merger", "acquisition", "acquires", "acquired", "to acquire",
+    "buyout", "takeover", "going private", "deal to buy", "agrees to buy",
+    "merger agreement", "definitive agreement",
+    # FDA / biotech
+    "fda approval", "fda approved", "fda approves", "fda clears", "fda rejects",
+    "fda rejection", "fda grants", "breakthrough therapy", "accelerated approval",
+    "phase 3", "clinical trial results", "nda submission", "bla submission",
+    # Corporate events
+    "bankruptcy", "chapter 11", "chapter 7", "files for bankruptcy",
+    "stock split", "reverse split", "share buyback", "buyback program",
+    "special dividend", "dividend cut", "dividend suspended", "dividend increase",
+    "going public", "prices ipo", "ipo priced",
+    # Analyst / ratings
+    "upgrade", "downgrade", "initiates coverage", "raises price target",
+    "cuts price target", "price target raised", "price target cut",
+    "outperform", "underperform", "buy rating", "sell rating",
+    # Legal / regulatory
+    "sec investigation", "sec charges", "doj investigation", "class action",
+    "settlement", "fine", "penalty", "indicted", "subpoena",
+    # Management
+    "ceo resigns", "ceo fired", "ceo steps down", "cfo resigns",
+    "management change", "leadership change",
+    # Other catalysts
+    "short squeeze", "halted", "trading halted", "data breach",
+    "major contract", "contract awarded", "partnership agreement",
+    "product recall", "recall", "plant shutdown", "layoffs announced",
+    "restructuring", "spinoff", "spin-off", "divestiture",
+]
+
+# Yahoo Finance screener IDs for real-time movers
+YAHOO_SCREENERS = ["day_gainers", "day_losers", "most_actives"]
+
+_mover_tickers: set[str] = set()
+_mover_tickers_fetched_at: float = 0.0
+
+
+async def fetch_mover_tickers(client: httpx.AsyncClient) -> set[str]:
+    global _mover_tickers, _mover_tickers_fetched_at
+    import time
+
+    # Cache for 10 minutes
+    if time.time() - _mover_tickers_fetched_at < 600 and _mover_tickers:
+        return _mover_tickers
+
+    tickers: set[str] = set()
+    headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+        "Accept": "application/json",
+    }
+    for screener in YAHOO_SCREENERS:
+        url = (
+            f"https://query1.finance.yahoo.com/v1/finance/screener/predefined/saved"
+            f"?scrIds={screener}&count=30&region=US&lang=en-US"
+        )
+        try:
+            resp = await client.get(url, headers=headers, timeout=6.0)
+            data = resp.json()
+            quotes = (
+                data.get("finance", {})
+                    .get("result", [{}])[0]
+                    .get("quotes", [])
+            )
+            for q in quotes:
+                sym = q.get("symbol", "").upper().strip()
+                if sym and re.match(r"^[A-Z]{1,5}$", sym):
+                    tickers.add(sym)
+        except Exception:
+            pass
+
+    if tickers:
+        _mover_tickers = tickers
+        _mover_tickers_fetched_at = time.time()
+
+    return _mover_tickers
+
+
+def is_catalyst(text: str) -> bool:
+    t = text.lower()
+    return any(phrase in t for phrase in CATALYST_PHRASES)
+
+
+def mentions_ticker(text: str, tickers: set[str]) -> bool:
+    """Check if text contains any mover ticker as a standalone word."""
+    words = re.findall(r"\b[A-Z]{1,5}\b", text.upper())
+    return bool(set(words) & tickers)
+
 
 def is_trading_relevant(text: str) -> bool:
     text_lower = text.lower()
@@ -131,11 +226,14 @@ async def fetch_feed(client: httpx.AsyncClient, feed_meta: dict) -> list:
 @app.get("/api/news")
 async def get_news():
     async with httpx.AsyncClient(headers={"User-Agent": "Mozilla/5.0 SwingTraderDashboard/1.0"}) as client:
-        tasks = [fetch_feed(client, feed) for feed in FEEDS]
-        results = await asyncio.gather(*tasks)
+        feed_tasks = [fetch_feed(client, feed) for feed in FEEDS]
+        feed_results, mover_tickers = await asyncio.gather(
+            asyncio.gather(*feed_tasks),
+            fetch_mover_tickers(client),
+        )
 
     all_items = []
-    for batch in results:
+    for batch in feed_results:
         all_items.extend(batch)
 
     # Deduplicate by title similarity
@@ -146,6 +244,13 @@ async def get_news():
         if key not in seen_titles:
             seen_titles.add(key)
             deduped.append(item)
+
+    # Tag each item: is it a catalyst / mover story?
+    for item in deduped:
+        full_text = item["title"] + " " + (item["summary"] or "")
+        item["is_catalyst"] = is_catalyst(full_text)
+        item["mentions_mover"] = mentions_ticker(full_text, mover_tickers)
+        item["is_mover_news"] = item["is_catalyst"] or item["mentions_mover"]
 
     # Sort by published date descending
     def sort_key(item):
@@ -158,6 +263,7 @@ async def get_news():
 
     return JSONResponse({
         "items": deduped,
+        "mover_tickers": sorted(mover_tickers),
         "session": market_session(),
         "fetched_at": datetime.now(timezone.utc).isoformat(),
         "total": len(deduped),
