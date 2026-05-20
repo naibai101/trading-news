@@ -8,7 +8,7 @@ from fastapi import FastAPI, Header
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from dateutil import parser as dateparser
 from typing import Optional
 import re
@@ -288,6 +288,24 @@ async def get_news():
         if key not in seen_titles:
             seen_titles.add(key)
             deduped.append(item)
+
+    # Drop articles older than 48 hours — keep undated ones (likely fresh from feed)
+    cutoff = datetime.now(timezone.utc) - timedelta(hours=48)
+    fresh = []
+    for item in deduped:
+        if not item["published"]:
+            fresh.append(item)
+            continue
+        try:
+            pub_dt = dateparser.parse(item["published"])
+            if pub_dt:
+                if pub_dt.tzinfo is None:
+                    pub_dt = pub_dt.replace(tzinfo=timezone.utc)
+                if pub_dt >= cutoff:
+                    fresh.append(item)
+        except Exception:
+            fresh.append(item)
+    deduped = fresh
 
     # Tag each item with catalyst flag + matched mover ticker data
     for item in deduped:
