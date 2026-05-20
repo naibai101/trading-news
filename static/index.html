@@ -682,9 +682,9 @@
   <div class="brief-panel" id="brief-panel">
     <div class="brief-header" onclick="toggleBrief()">
       <div class="brief-header-left">
-        <div class="brief-icon">⚡</div>
+        <div class="brief-icon" id="brief-panel-icon">⚡</div>
         <div>
-          <div class="brief-title">Morning Brief</div>
+          <div class="brief-title" id="brief-panel-title">Market Brief</div>
           <div class="brief-subtitle" id="brief-subtitle">AI summary of today's market — click to expand</div>
         </div>
       </div>
@@ -694,8 +694,8 @@
     <div class="brief-body" id="brief-body">
       <!-- API key row — hidden once key is saved -->
       <div class="brief-key-row" id="brief-key-row">
-        <label>Anthropic API Key</label>
-        <input class="brief-key-input" id="brief-key-input" type="password" placeholder="sk-ant-..." autocomplete="off" />
+        <label>Gemini API Key</label>
+        <input class="brief-key-input" id="brief-key-input" type="password" placeholder="AIza..." autocomplete="off" />
         <button class="brief-key-save" onclick="saveKey()">Save</button>
         <span class="brief-key-saved" id="brief-key-saved">✓ Saved</span>
       </div>
@@ -1047,7 +1047,7 @@ function toggleBrief() {
 function saveKey() {
   const val = document.getElementById('brief-key-input').value.trim();
   if (!val) return;
-  localStorage.setItem('anthropic_key', val);
+  localStorage.setItem('gemini_key', val);
   document.getElementById('brief-key-input').value = '';
   document.getElementById('brief-key-saved').style.display = 'inline';
   setTimeout(() => document.getElementById('brief-key-saved').style.display = 'none', 2000);
@@ -1056,7 +1056,7 @@ function saveKey() {
 
 function hideBriefKeyRow() {
   const row = document.getElementById('brief-key-row');
-  if (localStorage.getItem('anthropic_key')) row.style.display = 'none';
+  if (localStorage.getItem('gemini_key')) row.style.display = 'none';
 }
 
 function parseBrief(text) {
@@ -1081,6 +1081,15 @@ function parseBrief(text) {
 function renderBrief(data) {
   const content = document.getElementById('brief-content');
   const meta    = document.getElementById('brief-meta');
+
+  // Update panel title + icon to match session
+  if (data.brief_label) {
+    document.getElementById('brief-panel-title').textContent = data.brief_label;
+  }
+  if (data.brief_icon) {
+    document.getElementById('brief-panel-icon').textContent = data.brief_icon;
+  }
+
   const sections = parseBrief(data.brief);
 
   if (!sections.length) {
@@ -1108,7 +1117,7 @@ function renderBrief(data) {
 }
 
 async function generateBrief() {
-  const key = localStorage.getItem('anthropic_key') || '';
+  const key = localStorage.getItem('gemini_key') || '';
   const panel = document.getElementById('brief-panel');
   const btn   = document.getElementById('brief-gen-btn');
   const loading = document.getElementById('brief-loading');
@@ -1152,7 +1161,7 @@ async function generateBrief() {
       errEl.style.display = 'block';
       document.getElementById('brief-key-row').style.display = 'flex';
     } else if (data.error === 'bad_key') {
-      localStorage.removeItem('anthropic_key');
+      localStorage.removeItem('gemini_key');
       errEl.textContent = 'Invalid API key — please re-enter it above.';
       errEl.style.display = 'block';
       document.getElementById('brief-key-row').style.display = 'flex';

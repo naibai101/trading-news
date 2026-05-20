@@ -3,7 +3,7 @@ import feedparser
 import httpx
 import os
 import time
-import anthropic
+import google.generativeai as genai
 from fastapi import FastAPI, Header
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -340,17 +340,57 @@ _brief_cache: dict = {}
 _brief_cache_key: str = ""
 _brief_cached_at: float = 0.0
 
+BRIEF_CONFIGS = {
+    "pre": {
+        "label": "Morning Brief",
+        "icon": "🌅",
+        "focus": (
+            "The market opens soon. Focus on overnight futures moves, pre-market movers, "
+            "key economic data releases scheduled for today, and the top catalysts to watch "
+            "when the bell rings. Help the trader decide what to monitor at open."
+        ),
+    },
+    "open": {
+        "label": "Midday Brief",
+        "icon": "📊",
+        "focus": (
+            "The market is live. Focus on what is actively moving and why, "
+            "any intraday catalysts or sector rotations, and what to watch into the close."
+        ),
+    },
+    "post": {
+        "label": "Evening Brief",
+        "icon": "🌙",
+        "focus": (
+            "The market has closed. Recap today's biggest movers and the reasons behind them. "
+            "Highlight any after-hours earnings or news. Help the trader decide what to "
+            "research tonight and what setups to watch at tomorrow's open."
+        ),
+    },
+    "closed": {
+        "label": "Market Brief",
+        "icon": "📋",
+        "focus": (
+            "The market is closed. Summarise the most important developments from the latest "
+            "headlines and flag what to watch for the next trading session."
+        ),
+    },
+}
+
 
 @app.post("/api/brief")
 async def generate_brief(x_api_key: Optional[str] = Header(default=None)):
     global _brief_cache, _brief_cache_key, _brief_cached_at
 
-    api_key = x_api_key or os.getenv("ANTHROPIC_API_KEY", "")
+    api_key = x_api_key or os.getenv("GEMINI_API_KEY", "")
     if not api_key:
         return JSONResponse({"error": "no_key"}, status_code=200)
 
-    # Cache per key for 30 minutes
-    cache_key = api_key[-8:]
+    session = market_session()
+    cfg = BRIEF_CONFIGS[session["session"]]
+
+    # Cache per key + session for 30 minutes
+    cache_key = api_key[-8:] + session["session"]
     if (
         _brief_cache
         and _brief_cache_key == cache_key
@@ -358,7 +398,7 @@ async def generate_brief(x_api_key: Optional[str] = Header(default=None)):
     ):
         return JSONResponse(_brief_cache)
 
-    # Fetch latest news to summarise
+    # Fetch latest news
     async with httpx.AsyncClient(headers={"User-Agent": "Mozilla/5.0 SwingTraderDashboard/1.0"}) as client:
         feed_tasks = [fetch_feed(client, feed) for feed in FEEDS]
         feed_results, (mover_tickers, mover_data) = await asyncio.gather(
@@ -373,12 +413,11 @@ async def generate_brief(x_api_key: Optional[str] = Header(default=None)):
     seen: set = set()
     deduped: list = []
     for item in all_items:
-        key = re.sub(r"\W+", "", item["title"].lower())[:60]
-        if key not in seen:
-            seen.add(key)
+        k = re.sub(r"\W+", "", item["title"].lower())[:60]
+        if k not in seen:
+            seen.add(k)
             deduped.append(item)
 
-    # Build a compact headlines block for the prompt (top 50 by recency)
     def _sort(i):
         try:
             return dateparser.parse(i["published"]) if i["published"] else datetime.min.replace(tzinfo=timezone.utc)
@@ -397,44 +436,49 @@ async def generate_brief(x_api_key: Optional[str] = Header(default=None)):
         ticker_note = f" [{item['ticker']}]" if item.get("ticker") else ""
         headline_lines.append(f"- [{item['category'].upper()}]{ticker_note} {item['title']}")
 
-    prompt = f"""You are a brief, no-fluff market analyst for a swing trader who reads this once at night or in the morning.
+    prompt = f"""You are a concise market analyst writing a {cfg['label']} for a swing trader.
+
+{cfg['focus']}
 
 Today's top movers by volume:
-{chr(10).join(mover_lines) if mover_lines else "  (market closed / no data)"}
+{chr(10).join(mover_lines) if mover_lines else "  (no live data — market closed)"}
 
 Current headlines ({len(headline_lines)} stories):
 {chr(10).join(headline_lines)}
 
-Write a swing trader's brief in exactly this structure. Be specific and concise — one tight sentence per bullet, no filler words:
+Write the brief in exactly this structure. One tight sentence per bullet, zero filler:
 
 **Market Mood**
-[One sentence on the overall tone: risk-on/risk-off, what's driving it]
+[One sentence: overall tone, risk-on or risk-off, what is driving it]
 
 **Top Movers**
 [3–5 bullets. Format: TICKER — what happened and the likely cause]
 
 **Macro & Rates**
-[2–3 bullets on Fed, yields, inflation, GDP, or global macro themes worth tracking]
+[2–3 bullets: Fed, yields, inflation, GDP, or global macro themes worth tracking]
 
 **What to Watch**
-[2–3 bullets on setups, catalysts, or events coming up that could create swing opportunities]"""
+[2–3 bullets: upcoming catalysts, earnings, or setups that could create swing opportunities]"""
 
     try:
-        client = anthropic.Anthropic(api_key=api_key)
-        msg = client.messages.create(
-            model="claude-haiku-4-5-20251001",
-            max_tokens=700,
-            system="You are a concise swing trading market analyst. You write tight, specific, actionable briefs with zero fluff.",
-            messages=[{"role": "user", "content": prompt}],
+        genai.configure(api_key=api_key)
+        model = genai.GenerativeModel(
+            model_name="gemini-1.5-flash",
+            system_instruction="You are a concise swing trading market analyst. Write tight, specific, actionable briefs with zero fluff.",
         )
-        brief_text = msg.content[0].text
-    except anthropic.AuthenticationError:
-        return JSONResponse({"error": "bad_key"}, status_code=200)
+        response = model.generate_content(prompt)
+        brief_text = response.text
     except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=200)
+        err = str(e)
+        if "API_KEY_INVALID" in err or "API key" in err.lower():
+            return JSONResponse({"error": "bad_key"}, status_code=200)
+        return JSONResponse({"error": err}, status_code=200)
 
     result = {
         "brief": brief_text,
+        "brief_label": cfg["label"],
+        "brief_icon": cfg["icon"],
+        "session": session["session"],
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "story_count": len(deduped),
     }
