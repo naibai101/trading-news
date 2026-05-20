@@ -405,21 +405,62 @@
   ::-webkit-scrollbar-thumb { background: rgba(167,139,250,0.3); border-radius: 3px; }
   ::-webkit-scrollbar-thumb:hover { background: rgba(167,139,250,0.55); }
 
-  /* ── Legend strip ──────────────────────────────────────────────── */
-  .legend {
-    display: flex;
-    gap: 14px;
-    flex-wrap: wrap;
-    margin-bottom: 16px;
-    padding: 12px 16px;
-    background: var(--bg-panel);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-card);
-    backdrop-filter: blur(8px);
+  /* ── Movers strip ──────────────────────────────────────────────── */
+  .movers-strip {
+    margin-bottom: 22px;
   }
-  .legend-title { font-size: 0.7rem; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.5px; align-self: center; margin-right: 4px; }
-  .legend-item  { display: flex; align-items: center; gap: 6px; font-size: 0.7rem; color: var(--text-dim); }
-  .legend-dot   { width: 8px; height: 8px; border-radius: 50%; }
+  .movers-strip-label {
+    font-size: 0.7rem;
+    color: var(--text-faint);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    margin-bottom: 10px;
+  }
+  .movers-scroll {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding-bottom: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(167,139,250,0.3) transparent;
+  }
+  .movers-scroll::-webkit-scrollbar { height: 4px; }
+  .movers-scroll::-webkit-scrollbar-thumb { background: rgba(167,139,250,0.3); border-radius: 2px; }
+  .ticker-card {
+    flex-shrink: 0;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 12px 16px;
+    backdrop-filter: blur(10px);
+    cursor: pointer;
+    transition: border-color 0.18s, box-shadow 0.18s, transform 0.15s;
+    min-width: 110px;
+  }
+  .ticker-card:hover {
+    border-color: var(--border-hv);
+    box-shadow: 0 0 16px var(--glow);
+    transform: translateY(-2px);
+  }
+  .ticker-sym {
+    font-family: 'Nunito', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 800;
+    color: var(--purple-1);
+    letter-spacing: -0.2px;
+  }
+  .ticker-pct {
+    font-size: 0.82rem;
+    font-weight: 700;
+    margin-top: 3px;
+  }
+  .ticker-pct.up   { color: var(--green); }
+  .ticker-pct.down { color: var(--red-soft); }
+  .ticker-vol {
+    font-size: 0.68rem;
+    color: var(--text-faint);
+    margin-top: 3px;
+  }
 
   /* ── Responsive ────────────────────────────────────────────────── */
   @media (max-width: 600px) {
@@ -455,7 +496,6 @@
     </div>
     <div class="header-text">
       <h1>naibai's trading desk ✦</h1>
-      <p>swing trader · pre &amp; post market news · credible, multi-source</p>
     </div>
     <div class="header-right">
       <div class="session-pill">
@@ -478,18 +518,14 @@
     <div class="stat-card"><div class="label">Macro / Rates</div><div class="value" id="stat-macro">—</div><div class="sub">fed, gdp, yields</div></div>
     <div class="stat-card"><div class="label">Earnings</div><div class="value" id="stat-earnings">—</div><div class="sub">corporate results</div></div>
     <div class="stat-card"><div class="label">Regulatory</div><div class="value" id="stat-reg">—</div><div class="sub">sec, fed speeches</div></div>
-    <div class="stat-card" style="min-width:200px"><div class="label">Today's Movers</div><div class="value" id="stat-tickers" style="font-size:0.7rem;font-weight:700;color:var(--purple-1);line-height:1.6">—</div><div class="sub">gainers · losers · active</div></div>
   </div>
 
-  <!-- ── Source bias legend ── -->
-  <div class="legend">
-    <span class="legend-title">Source bias</span>
-    <span class="legend-item"><span class="legend-dot" style="background:#6ee7b7"></span> Official / Regulatory</span>
-    <span class="legend-item"><span class="legend-dot" style="background:#93c5fd"></span> Center</span>
-    <span class="legend-item"><span class="legend-dot" style="background:#c4b5fd"></span> Center-Left</span>
-    <span class="legend-item"><span class="legend-dot" style="background:#fcd34d"></span> Center-Right</span>
-    <span class="legend-item"><span class="legend-dot" style="background:#f0abfc"></span> Varies</span>
-    <span style="margin-left:auto;font-size:0.68rem;color:var(--text-faint)">Multiple sources = less bias ✦</span>
+  <!-- ── Movers strip ── -->
+  <div class="movers-strip">
+    <div class="movers-strip-label">Today's Movers — sorted by volume</div>
+    <div class="movers-scroll" id="movers-scroll">
+      <span style="font-size:0.78rem;color:var(--text-faint);align-self:center">Loading…</span>
+    </div>
   </div>
 
   <!-- ── Filters ── -->
@@ -690,7 +726,7 @@ function buildCard(item) {
       <div class="card-title">${item.title}</div>
       ${item.summary ? `<div class="card-summary">${item.summary}</div>` : ''}
       <div class="card-footer">
-        <span class="bias-tag" title="Editorial lean" style="color:${biasColor(item.bias)};background:${biasColor(item.bias)}18">${item.bias}</span>
+        ${item.ticker ? `<span class="bias-tag" style="color:${item.ticker_pct >= 0 ? 'var(--green)' : 'var(--red-soft)'};background:${item.ticker_pct >= 0 ? 'rgba(110,231,183,0.12)' : 'rgba(252,165,165,0.12)'};font-weight:700;font-size:0.68rem">${item.ticker} ${item.ticker_pct >= 0 ? '+' : ''}${item.ticker_pct?.toFixed(2)}% · ${fmtVol(item.ticker_volume)}</span>` : `<span class="bias-tag" style="color:${biasColor(item.bias)};background:${biasColor(item.bias)}18">${item.bias}</span>`}
         <a class="read-link" href="${safeLink}" target="_blank" rel="noopener noreferrer" onclick="event.stopPropagation()">
           Read
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="7" y1="17" x2="17" y2="7"/><polyline points="7 7 17 7 17 17"/></svg>
@@ -699,19 +735,37 @@ function buildCard(item) {
     </div>`;
 }
 
-function updateStats(items, moverTickers) {
+function fmtVol(v) {
+  if (!v) return '—';
+  if (v >= 1e9) return (v / 1e9).toFixed(1) + 'B';
+  if (v >= 1e6) return (v / 1e6).toFixed(1) + 'M';
+  if (v >= 1e3) return (v / 1e3).toFixed(0) + 'K';
+  return v.toString();
+}
+
+function updateStats(items, moverList) {
   document.getElementById('stat-total').textContent    = items.length;
   document.getElementById('stat-movers').textContent   = items.filter(i => i.is_mover_news).length;
   document.getElementById('stat-macro').textContent    = items.filter(i => i.category === 'macro' || i.category === 'fed').length;
   document.getElementById('stat-earnings').textContent = items.filter(i => i.category === 'earnings').length;
   document.getElementById('stat-reg').textContent      = items.filter(i => i.category === 'regulatory').length;
 
-  const tickerEl = document.getElementById('stat-tickers');
-  if (moverTickers && moverTickers.length) {
-    tickerEl.textContent = moverTickers.slice(0, 20).join('  ·  ');
-  } else {
-    tickerEl.textContent = 'market closed';
+  const scroll = document.getElementById('movers-scroll');
+  if (!moverList || moverList.length === 0) {
+    scroll.innerHTML = '<span style="font-size:0.78rem;color:var(--text-faint);align-self:center">Market closed — no movers data</span>';
+    return;
   }
+  scroll.innerHTML = moverList.map(m => {
+    const pct     = m.pct_change ?? 0;
+    const sign    = pct >= 0 ? '+' : '';
+    const cls     = pct >= 0 ? 'up' : 'down';
+    return `
+      <div class="ticker-card" onclick="document.getElementById('search-input').value='${m.ticker}';setFilter('all');applyFilters()">
+        <div class="ticker-sym">${m.ticker}</div>
+        <div class="ticker-pct ${cls}">${sign}${pct.toFixed(2)}%</div>
+        <div class="ticker-vol">Vol ${fmtVol(m.volume)}</div>
+      </div>`;
+  }).join('');
 }
 
 function applyFilters() {
@@ -774,7 +828,7 @@ async function loadNews() {
     allItems   = data.items || [];
 
     document.getElementById('loading-state').style.display = 'none';
-    updateStats(allItems, data.mover_tickers || []);
+    updateStats(allItems, data.mover_list || []);
     applyFilters();
 
     const ts = new Date(data.fetched_at);

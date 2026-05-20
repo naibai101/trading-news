@@ -95,18 +95,19 @@ CATALYST_PHRASES = [
 YAHOO_SCREENERS = ["day_gainers", "day_losers", "most_actives"]
 
 _mover_tickers: set[str] = set()
+_mover_data: dict = {}  # ticker -> {pct_change, volume, price}
 _mover_tickers_fetched_at: float = 0.0
 
 
-async def fetch_mover_tickers(client: httpx.AsyncClient) -> set[str]:
-    global _mover_tickers, _mover_tickers_fetched_at
+async def fetch_mover_tickers(client: httpx.AsyncClient) -> tuple[set[str], dict]:
+    global _mover_tickers, _mover_data, _mover_tickers_fetched_at
     import time
 
     # Cache for 10 minutes
     if time.time() - _mover_tickers_fetched_at < 600 and _mover_tickers:
-        return _mover_tickers
+        return _mover_tickers, _mover_data
 
-    tickers: set[str] = set()
+    ticker_data: dict = {}
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
         "Accept": "application/json",
@@ -127,15 +128,20 @@ async def fetch_mover_tickers(client: httpx.AsyncClient) -> set[str]:
             for q in quotes:
                 sym = q.get("symbol", "").upper().strip()
                 if sym and re.match(r"^[A-Z]{1,5}$", sym):
-                    tickers.add(sym)
+                    ticker_data[sym] = {
+                        "pct_change": round(q.get("regularMarketChangePercent", 0), 2),
+                        "volume": q.get("regularMarketVolume", 0),
+                        "price": round(q.get("regularMarketPrice", 0), 2),
+                    }
         except Exception:
             pass
 
-    if tickers:
-        _mover_tickers = tickers
+    if ticker_data:
+        _mover_tickers = set(ticker_data.keys())
+        _mover_data = ticker_data
         _mover_tickers_fetched_at = time.time()
 
-    return _mover_tickers
+    return _mover_tickers, _mover_data
 
 
 def is_catalyst(text: str) -> bool:
@@ -227,7 +233,7 @@ async def fetch_feed(client: httpx.AsyncClient, feed_meta: dict) -> list:
 async def get_news():
     async with httpx.AsyncClient(headers={"User-Agent": "Mozilla/5.0 SwingTraderDashboard/1.0"}) as client:
         feed_tasks = [fetch_feed(client, feed) for feed in FEEDS]
-        feed_results, mover_tickers = await asyncio.gather(
+        feed_results, (mover_tickers, mover_data) = await asyncio.gather(
             asyncio.gather(*feed_tasks),
             fetch_mover_tickers(client),
         )
@@ -245,25 +251,42 @@ async def get_news():
             seen_titles.add(key)
             deduped.append(item)
 
-    # Tag each item: is it a catalyst / mover story?
+    # Tag each item with catalyst flag + matched mover ticker data
     for item in deduped:
         full_text = item["title"] + " " + (item["summary"] or "")
         item["is_catalyst"] = is_catalyst(full_text)
-        item["mentions_mover"] = mentions_ticker(full_text, mover_tickers)
+
+        words = set(re.findall(r"\b[A-Z]{1,5}\b", full_text.upper()))
+        mentioned = words & mover_tickers
+        if mentioned:
+            best = max(mentioned, key=lambda t: mover_data.get(t, {}).get("volume", 0))
+            item["ticker"]        = best
+            item["ticker_volume"] = mover_data[best]["volume"]
+            item["ticker_pct"]    = mover_data[best]["pct_change"]
+            item["ticker_price"]  = mover_data[best]["price"]
+            item["mentions_mover"] = True
+        else:
+            item["ticker"]        = None
+            item["ticker_volume"] = 0
+            item["ticker_pct"]    = None
+            item["ticker_price"]  = None
+            item["mentions_mover"] = False
+
         item["is_mover_news"] = item["is_catalyst"] or item["mentions_mover"]
 
-    # Sort by published date descending
-    def sort_key(item):
-        try:
-            return dateparser.parse(item["published"]) if item["published"] else datetime.min.replace(tzinfo=timezone.utc)
-        except Exception:
-            return datetime.min.replace(tzinfo=timezone.utc)
+    # Sort by volume of the mentioned ticker (high-volume stocks bubble up)
+    deduped.sort(key=lambda x: x.get("ticker_volume", 0), reverse=True)
 
-    deduped.sort(key=sort_key, reverse=True)
+    # Build mover list sorted by volume for the UI strip
+    mover_list = sorted(
+        [{"ticker": t, **d} for t, d in mover_data.items()],
+        key=lambda x: x["volume"],
+        reverse=True,
+    )
 
     return JSONResponse({
         "items": deduped,
-        "mover_tickers": sorted(mover_tickers),
+        "mover_list": mover_list,
         "session": market_session(),
         "fetched_at": datetime.now(timezone.utc).isoformat(),
         "total": len(deduped),
