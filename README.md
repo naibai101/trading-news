@@ -1,6 +1,6 @@
-# naibai's trading desk
+# Trading News Dashboard
 
-Pre & post-market news dashboard for swing traders. Pulls from credible, editorially-diverse sources so you're not getting a single-lens view of the market.
+A pre/post-market news aggregator for swing traders. Pulls from credible, editorially-diverse sources to provide a balanced view of market-moving events.
 
 ## Sources
 
@@ -39,5 +39,4 @@ Open [http://localhost:8000](http://localhost:8000).
 - Pre-market / Market Open / After-Hours / Closed session indicator (ET)
 - Filter by category: Macro, Markets, Earnings, Sectors, Fed/Rates, Regulatory
 - Full-text search across headlines and summaries
-- Source bias label on every card (transparency)
-- Cozy anime-aesthetic UI — not another lifeless dark dashboard
+- Source bias label on every card for editorial transparency
