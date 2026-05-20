@@ -450,7 +450,7 @@ async def generate_brief(x_api_key: Optional[str] = Header(default=None)):
         mover_lines.append(f"  {sym}: {sign}{d['pct_change']:.2f}% | Vol {d['volume']:,}")
 
     headline_lines = []
-    for item in deduped[:50]:
+    for item in deduped[:25]:
         ticker_note = f" [{item['ticker']}]" if item.get("ticker") else ""
         headline_lines.append(f"- [{item['category'].upper()}]{ticker_note} {item['title']}")
 
@@ -481,7 +481,7 @@ Write the brief in exactly this structure. One tight sentence per bullet, zero f
     try:
         genai.configure(api_key=api_key)
         model = genai.GenerativeModel(
-            model_name="gemini-2.0-flash",
+            model_name="gemini-1.5-flash-latest",
             system_instruction="You are a concise swing trading market analyst. Write tight, specific, actionable briefs with zero fluff.",
         )
         response = model.generate_content(prompt)
