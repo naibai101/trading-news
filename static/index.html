@@ -1202,7 +1202,7 @@ async function generateBrief() {
     const data = await res.json();
 
     if (data.error === 'no_key') {
-      errEl.textContent = 'No API key found. Enter your Anthropic key above.';
+      errEl.textContent = 'No API key found. Click 🔑 to enter your Gemini API key.';
       errEl.style.display = 'block';
       document.getElementById('brief-key-row').style.display = 'flex';
     } else if (data.error === 'bad_key') {
