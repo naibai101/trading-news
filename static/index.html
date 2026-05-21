@@ -641,15 +641,13 @@
 
     <div class="sidebar-section-label">categories</div>
     <nav class="sidebar-nav">
-      <button class="chip active" data-cat="all"        onclick="setFilter('all')">📰 All</button>
-      <button class="chip"        data-cat="macro"      onclick="setFilter('macro')">📊 Macro</button>
-      <button class="chip"        data-cat="markets"    onclick="setFilter('markets')">📈 Markets</button>
-      <button class="chip"        data-cat="earnings"   onclick="setFilter('earnings')">💰 Earnings</button>
-      <button class="chip"        data-cat="sector"     onclick="setFilter('sector')">🏭 Sectors</button>
-      <button class="chip"        data-cat="fed"        onclick="setFilter('fed')">🏦 Fed / Rates</button>
-      <button class="chip"        data-cat="regulatory" onclick="setFilter('regulatory')">📋 Regulatory</button>
+      <button class="chip active" data-cat="all"      onclick="setFilter('all')">📰 All</button>
+      <button class="chip"        data-cat="macro"    onclick="setFilter('macro')">🌐 Macro & Policy</button>
+      <button class="chip"        data-cat="markets"  onclick="setFilter('markets')">📈 Markets</button>
+      <button class="chip"        data-cat="earnings" onclick="setFilter('earnings')">💰 Earnings</button>
+      <button class="chip"        data-cat="sector"   onclick="setFilter('sector')">🏭 Sectors</button>
       <div class="sidebar-divider"></div>
-      <button class="chip"        data-cat="movers"     onclick="setFilter('movers')">🚀 Movers only</button>
+      <button class="chip"        data-cat="movers"   onclick="setFilter('movers')">🚀 Movers only</button>
     </nav>
 
     <div class="sidebar-footer">
@@ -680,9 +678,9 @@
     <div class="stats-strip" id="stats-strip">
       <div class="stat-card"><div class="label">✦ stories today</div><div class="value" id="stat-total">—</div><div class="sub">from all sources</div></div>
       <div class="stat-card"><div class="label">🚀 moving</div><div class="value" id="stat-movers">—</div><div class="sub">catalyst stories</div></div>
-      <div class="stat-card"><div class="label">🌐 macro & rates</div><div class="value" id="stat-macro">—</div><div class="sub">fed, gdp, yields</div></div>
+      <div class="stat-card"><div class="label">🌐 macro & policy</div><div class="value" id="stat-macro">—</div><div class="sub">fed, sec, gdp, yields</div></div>
       <div class="stat-card"><div class="label">💰 earnings</div><div class="value" id="stat-earnings">—</div><div class="sub">corporate results</div></div>
-      <div class="stat-card"><div class="label">📋 regulatory</div><div class="value" id="stat-reg">—</div><div class="sub">sec & fed</div></div>
+      <div class="stat-card"><div class="label">📈 markets & sectors</div><div class="value" id="stat-reg">—</div><div class="sub">equities & industry</div></div>
     </div>
 
     <!-- Brief panel -->
@@ -905,9 +903,9 @@ function fmtVol(v) {
 function updateStats(items, moverList) {
   document.getElementById('stat-total').textContent    = items.length;
   document.getElementById('stat-movers').textContent   = items.filter(i => i.is_mover_news).length;
-  document.getElementById('stat-macro').textContent    = items.filter(i => i.category === 'macro' || i.category === 'fed').length;
+  document.getElementById('stat-macro').textContent    = items.filter(i => i.category === 'macro').length;
   document.getElementById('stat-earnings').textContent = items.filter(i => i.category === 'earnings').length;
-  document.getElementById('stat-reg').textContent      = items.filter(i => i.category === 'regulatory').length;
+  document.getElementById('stat-reg').textContent      = items.filter(i => i.category === 'markets' || i.category === 'sector').length;
 
   const scroll = document.getElementById('movers-scroll');
   if (!moverList || moverList.length === 0) {

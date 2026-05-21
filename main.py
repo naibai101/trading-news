@@ -40,8 +40,8 @@ FEEDS = [
     {"name": "CNBC Top News", "url": "https://www.cnbc.com/id/100003114/device/rss/rss.html", "category": "sector", "bias": "center-left"},
     {"name": "The Verge Tech", "url": "https://www.theverge.com/rss/index.xml", "category": "sector", "bias": "center-left"},
     # Rates / Fed / regulators
-    {"name": "Fed Reserve Speeches", "url": "https://www.federalreserve.gov/feeds/speeches.xml", "category": "fed", "bias": "official"},
-    {"name": "SEC Press Releases", "url": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=&dateb=&owner=include&count=10&search_text=&output=atom", "category": "regulatory", "bias": "official"},
+    {"name": "Fed Reserve Speeches", "url": "https://www.federalreserve.gov/feeds/speeches.xml", "category": "macro", "bias": "official"},
+    {"name": "SEC Press Releases", "url": "https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&type=&dateb=&owner=include&count=10&search_text=&output=atom", "category": "macro", "bias": "official"},
     # Commodities / global macro
     {"name": "FT Markets", "url": "https://www.ft.com/markets?format=rss", "category": "macro", "bias": "center"},
     {"name": "Bloomberg Economics", "url": "https://feeds.bloomberg.com/economics/news.rss", "category": "macro", "bias": "center"},
@@ -133,11 +133,14 @@ async def fetch_mover_tickers(client: httpx.AsyncClient) -> tuple[set[str], dict
                 if sym and re.match(r"^[A-Z]{1,5}$", sym):
                     price     = q.get("regularMarketPrice", 0) or 0
                     prev      = q.get("regularMarketPreviousClose", price) or price
+                    vol       = q.get("regularMarketVolume", 0) or 0
+                    avg_vol   = q.get("averageDailyVolume3Month", 0) or 0
                     ticker_data[sym] = {
                         "pct_change":  round(q.get("regularMarketChangePercent", 0), 2),
                         "change":      round(price - prev, 2),
-                        "volume":      q.get("regularMarketVolume", 0),
-                        "avg_volume":  q.get("averageDailyVolume3Month", 0),
+                        "volume":      vol,
+                        "avg_volume":  avg_vol,
+                        "vol_ratio":   round(vol / avg_vol, 2) if avg_vol else 0,
                         "price":       round(price, 2),
                         "day_high":    round(q.get("regularMarketDayHigh", 0), 2),
                         "day_low":     round(q.get("regularMarketDayLow", 0), 2),
@@ -321,28 +324,30 @@ async def get_news():
         words = set(re.findall(r"\b[A-Z]{2,5}\b", full_text))  # match original case only
         mentioned = (words - TICKER_BLOCKLIST) & mover_tickers
         if mentioned:
-            best = max(mentioned, key=lambda t: mover_data.get(t, {}).get("volume", 0))
-            item["ticker"]        = best
-            item["ticker_volume"] = mover_data[best]["volume"]
-            item["ticker_pct"]    = mover_data[best]["pct_change"]
-            item["ticker_price"]  = mover_data[best]["price"]
-            item["mentions_mover"] = True
+            best = max(mentioned, key=lambda t: mover_data.get(t, {}).get("vol_ratio", 0))
+            item["ticker"]           = best
+            item["ticker_volume"]    = mover_data[best]["volume"]
+            item["ticker_vol_ratio"] = mover_data[best]["vol_ratio"]
+            item["ticker_pct"]       = mover_data[best]["pct_change"]
+            item["ticker_price"]     = mover_data[best]["price"]
+            item["mentions_mover"]   = True
         else:
-            item["ticker"]        = None
-            item["ticker_volume"] = 0
-            item["ticker_pct"]    = None
-            item["ticker_price"]  = None
-            item["mentions_mover"] = False
+            item["ticker"]           = None
+            item["ticker_volume"]    = 0
+            item["ticker_vol_ratio"] = 0
+            item["ticker_pct"]       = None
+            item["ticker_price"]     = None
+            item["mentions_mover"]   = False
 
         item["is_mover_news"] = item["is_catalyst"] or item["mentions_mover"]
 
-    # Sort by volume of the mentioned ticker (high-volume stocks bubble up)
-    deduped.sort(key=lambda x: x.get("ticker_volume", 0), reverse=True)
+    # Sort by volume surge ratio (stocks trading well above avg volume bubble up)
+    deduped.sort(key=lambda x: x.get("ticker_vol_ratio", 0), reverse=True)
 
-    # Build mover list sorted by volume for the UI strip
+    # Build mover list sorted by volume surge ratio for the UI strip
     mover_list = sorted(
         [{"ticker": t, **d} for t, d in mover_data.items()],
-        key=lambda x: x["volume"],
+        key=lambda x: x.get("vol_ratio", 0),
         reverse=True,
     )
 
@@ -451,9 +456,9 @@ async def generate_brief(x_api_key: Optional[str] = Header(default=None)):
     deduped.sort(key=_sort, reverse=True)
 
     mover_lines = []
-    for sym, d in sorted(mover_data.items(), key=lambda x: x[1]["volume"], reverse=True)[:8]:
+    for sym, d in sorted(mover_data.items(), key=lambda x: x[1].get("vol_ratio", 0), reverse=True)[:8]:
         sign = "+" if d["pct_change"] >= 0 else ""
-        mover_lines.append(f"  {sym}: {sign}{d['pct_change']:.2f}% | ${d['price']:.2f} | Vol {d['volume']:,}")
+        mover_lines.append(f"  {sym}: {sign}{d['pct_change']:.2f}% | {d.get('vol_ratio', 0):.1f}x avg vol")
 
     headline_lines = []
     for item in deduped[:18]:
@@ -464,7 +469,7 @@ async def generate_brief(x_api_key: Optional[str] = Header(default=None)):
 
 {cfg['focus']}
 
-Top movers by volume:
+Top movers by volume surge (vol/avg):
 {chr(10).join(mover_lines) if mover_lines else "  (market closed — no live data)"}
 
 Today's headlines:
