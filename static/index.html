@@ -1167,6 +1167,7 @@ async function generateBrief() {
       errEl.textContent = 'Error: ' + data.error;
       errEl.style.display = 'block';
     } else {
+      localStorage.setItem('brief_saved', JSON.stringify(data));
       renderBrief(data);
     }
   } catch (e) {
@@ -1181,6 +1182,13 @@ async function generateBrief() {
 
 // ── Init ──────────────────────────────────────────────────────────
 hideBriefKeyRow();
+
+// Restore saved brief from previous session
+const _savedBrief = localStorage.getItem('brief_saved');
+if (_savedBrief) {
+  try { renderBrief(JSON.parse(_savedBrief)); } catch {}
+}
+
 updateSession();
 setInterval(updateSession, 30_000);
 loadNews();
