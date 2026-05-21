@@ -351,6 +351,10 @@ async def get_news():
         reverse=True,
     )
 
+    # Cache full article list for ticker search
+    global _news_items_cache
+    _news_items_cache = deduped
+
     return JSONResponse({
         "items": deduped,
         "mover_list": mover_list,
@@ -364,6 +368,50 @@ async def get_news():
 async def get_session():
     return JSONResponse(market_session())
 
+
+_COMPANY_NAME_SKIP = {"inc", "corp", "corporation", "ltd", "llc", "co", "company", "the",
+                      "and", "of", "&", "group", "holdings", "technologies", "technology",
+                      "solutions", "services", "international", "global", "systems"}
+
+
+@app.get("/api/ticker-search/{symbol}")
+async def ticker_search(symbol: str):
+    symbol = symbol.upper().strip()[:5]
+    if not re.match(r"^[A-Z]{1,5}$", symbol):
+        return JSONResponse({"items": [], "company": "", "symbol": symbol})
+
+    # Look up company name from Yahoo Finance
+    company_name = ""
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            resp = await client.get(
+                f"https://query1.finance.yahoo.com/v7/finance/quote?symbols={symbol}",
+                headers={"User-Agent": "Mozilla/5.0 SwingTraderDashboard/1.0"},
+            )
+            result = resp.json().get("quoteResponse", {}).get("result", [])
+            if result:
+                company_name = result[0].get("shortName", "") or result[0].get("longName", "")
+    except Exception:
+        pass
+
+    # Build search terms: the symbol itself + meaningful words from company name
+    query_terms = [symbol.lower()]
+    if company_name:
+        for word in re.sub(r"[,.\(\)']", "", company_name).split():
+            w = word.lower().rstrip(".")
+            if w not in _COMPANY_NAME_SKIP and len(w) > 2:
+                query_terms.append(w)
+
+    matched = []
+    for item in _news_items_cache:
+        full = (item["title"] + " " + (item.get("summary") or "")).lower()
+        if any(term in full for term in query_terms):
+            matched.append(item)
+
+    return JSONResponse({"items": matched, "company": company_name, "symbol": symbol})
+
+
+_news_items_cache: list = []
 
 _brief_cache: dict = {}
 _brief_cache_key: str = ""
@@ -409,23 +457,12 @@ BRIEF_CONFIGS = {
 
 @app.post("/api/brief")
 async def generate_brief(x_api_key: Optional[str] = Header(default=None)):
-    global _brief_cache, _brief_cache_key, _brief_cached_at
-
     api_key = x_api_key or os.getenv("GEMINI_API_KEY", "")
     if not api_key:
         return JSONResponse({"error": "no_key"}, status_code=200)
 
     session = market_session()
     cfg = BRIEF_CONFIGS[session["session"]]
-
-    # Cache per key + session for 30 minutes
-    cache_key = api_key[-8:] + session["session"]
-    if (
-        _brief_cache
-        and _brief_cache_key == cache_key
-        and time.time() - _brief_cached_at < 1800
-    ):
-        return JSONResponse(_brief_cache)
 
     # Fetch latest news
     async with httpx.AsyncClient(headers={"User-Agent": "Mozilla/5.0 SwingTraderDashboard/1.0"}) as client:
@@ -521,9 +558,6 @@ Write the brief using this structure. Keep each bullet to one tight, specific se
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "story_count": len(deduped),
     }
-    _brief_cache = result
-    _brief_cache_key = cache_key
-    _brief_cached_at = time.time()
     return JSONResponse(result)
 
 

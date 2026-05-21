@@ -933,10 +933,23 @@ function updateStats(items, moverList) {
   }).join('');
 }
 
+let _tickerSearchTimeout = null;
+
 function applyFilters() {
-  const q     = document.getElementById('search-input').value.toLowerCase().trim();
+  const raw   = document.getElementById('search-input').value.trim();
+  const q     = raw.toLowerCase();
   const grid  = document.getElementById('news-grid');
   const empty = document.getElementById('empty-state');
+
+  // Reset placeholder when query is cleared
+  if (!raw) document.getElementById('search-input').placeholder = 'Search ticker, topic…';
+
+  // If query looks like a ticker symbol, use the backend ticker-search
+  if (/^[A-Za-z]{1,5}$/.test(raw) && raw === raw.toUpperCase() && raw.length >= 1) {
+    clearTimeout(_tickerSearchTimeout);
+    _tickerSearchTimeout = setTimeout(() => doTickerSearch(raw), 350);
+    return;
+  }
 
   let filtered = allItems;
   if (activeFilter === 'movers') filtered = filtered.filter(isMover);
@@ -956,6 +969,39 @@ function applyFilters() {
   } else {
     empty.style.display = 'none';
     filtered.forEach(item => grid.insertAdjacentHTML('beforeend', buildCard(item)));
+  }
+}
+
+async function doTickerSearch(symbol) {
+  const grid  = document.getElementById('news-grid');
+  const empty = document.getElementById('empty-state');
+
+  grid.querySelectorAll('.news-card').forEach(el => el.remove());
+  document.getElementById('loading-state').style.display = 'flex';
+  empty.style.display = 'none';
+
+  try {
+    const res  = await fetch(`/api/ticker-search/${encodeURIComponent(symbol)}`);
+    const data = await res.json();
+
+    document.getElementById('loading-state').style.display = 'none';
+
+    // Update search placeholder to show what we matched
+    const label = data.company ? `${symbol} · ${data.company}` : symbol;
+    document.getElementById('search-input').placeholder = `Showing: ${label}`;
+
+    if (!data.items || data.items.length === 0) {
+      empty.style.display = 'flex';
+      empty.style.flexDirection = 'column';
+      empty.style.alignItems = 'center';
+      empty.querySelector('p').textContent = `No recent news found for ${label}.`;
+    } else {
+      empty.style.display = 'none';
+      data.items.forEach(item => grid.insertAdjacentHTML('beforeend', buildCard(item)));
+    }
+  } catch {
+    document.getElementById('loading-state').style.display = 'none';
+    empty.style.display = 'flex';
   }
 }
 
@@ -1089,18 +1135,6 @@ async function generateBrief() {
   const errEl  = document.getElementById('brief-error');
   const content = document.getElementById('brief-content');
 
-  const cached = sessionStorage.getItem('brief_cache');
-  if (cached) {
-    try {
-      const parsed = JSON.parse(cached);
-      if (Date.now() - parsed._ts < 1800000) {
-        panel.classList.add('open');
-        renderBrief(parsed);
-        return;
-      }
-    } catch {}
-  }
-
   if (!key) {
     panel.classList.add('open');
     document.getElementById('brief-key-row').style.display = 'flex';
@@ -1133,8 +1167,6 @@ async function generateBrief() {
       errEl.textContent = 'Error: ' + data.error;
       errEl.style.display = 'block';
     } else {
-      data._ts = Date.now();
-      sessionStorage.setItem('brief_cache', JSON.stringify(data));
       renderBrief(data);
     }
   } catch (e) {
