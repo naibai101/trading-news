@@ -451,26 +451,38 @@ async def generate_brief(x_api_key: Optional[str] = Header(default=None)):
     deduped.sort(key=_sort, reverse=True)
 
     mover_lines = []
-    for sym, d in sorted(mover_data.items(), key=lambda x: x[1]["volume"], reverse=True)[:5]:
+    for sym, d in sorted(mover_data.items(), key=lambda x: x[1]["volume"], reverse=True)[:8]:
         sign = "+" if d["pct_change"] >= 0 else ""
-        mover_lines.append(f"{sym}: {sign}{d['pct_change']:.2f}%")
+        mover_lines.append(f"  {sym}: {sign}{d['pct_change']:.2f}% | ${d['price']:.2f} | Vol {d['volume']:,}")
 
     headline_lines = []
-    for item in deduped[:10]:
+    for item in deduped[:18]:
         ticker_note = f" [{item['ticker']}]" if item.get("ticker") else ""
-        headline_lines.append(f"- {item['category'].upper()}{ticker_note}: {item['title']}")
+        headline_lines.append(f"- [{item['category'].upper()}]{ticker_note} {item['title']}")
 
-    prompt = f"""{cfg['label']} — swing trader brief.
+    prompt = f"""You are a concise swing trading analyst writing a {cfg['label']}.
 
-Movers: {', '.join(mover_lines) if mover_lines else 'market closed'}
+{cfg['focus']}
 
-Headlines:
+Top movers by volume:
+{chr(10).join(mover_lines) if mover_lines else "  (market closed — no live data)"}
+
+Today's headlines:
 {chr(10).join(headline_lines)}
 
-Reply in this format, one sentence each, no filler:
-**Mood:** [market tone]
-**Movers:** [2-3 bullets: TICKER — catalyst]
-**Watch:** [2 bullets: upcoming setups or catalysts]"""
+Write the brief using this structure. Keep each bullet to one tight, specific sentence — no filler, no generic statements:
+
+**Market Mood**
+[Overall tone: risk-on or risk-off, what's driving it, and how it affects swing setups]
+
+**Top Movers**
+[3–4 bullets. Format: TICKER — what happened and why it moved]
+
+**Macro & Rates**
+[2 bullets: anything from the Fed, yields, inflation, or global macro that matters for positioning]
+
+**What to Watch**
+[2–3 bullets: upcoming earnings, catalysts, or chart setups worth having on your radar]"""
 
     try:
         gemini_url = (
@@ -478,8 +490,11 @@ Reply in this format, one sentence each, no filler:
             f"gemini-2.5-flash-lite:generateContent?key={api_key}"
         )
         payload = {
+            "systemInstruction": {
+                "parts": [{"text": "You are a concise swing trading market analyst. Write tight, specific, actionable briefs. Every bullet must name a ticker, data point, or concrete event — no vague observations."}]
+            },
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-            "generationConfig": {"maxOutputTokens": 350, "temperature": 0.4},
+            "generationConfig": {"maxOutputTokens": 600, "temperature": 0.4},
         }
         async with httpx.AsyncClient(timeout=30.0) as gc:
             resp = await gc.post(gemini_url, json=payload)
