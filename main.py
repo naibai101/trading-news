@@ -97,6 +97,52 @@ CATALYST_PHRASES = [
 # Yahoo Finance screener IDs for real-time movers
 YAHOO_SCREENERS = ["day_gainers", "day_losers", "most_actives"]
 
+# Indexes and sector ETFs for market context
+INDEX_SYMBOLS = {
+    "SPY":  "S&P 500",
+    "QQQ":  "Nasdaq 100",
+    "DIA":  "Dow Jones",
+    "IWM":  "Russell 2000",
+    "^VIX": "VIX",
+    "TLT":  "20yr Bonds",
+    "GLD":  "Gold",
+    "DXY":  "USD Index",
+}
+SECTOR_SYMBOLS = {
+    "XLK":  "Tech",
+    "XLF":  "Financials",
+    "XLE":  "Energy",
+    "XLV":  "Health Care",
+    "XLY":  "Consumer Disc",
+    "XLP":  "Consumer Staples",
+    "XLI":  "Industrials",
+    "XLB":  "Materials",
+    "XLRE": "Real Estate",
+    "XLU":  "Utilities",
+    "XLC":  "Comm Services",
+}
+
+
+async def fetch_index_data(client: httpx.AsyncClient) -> dict:
+    all_syms = list(INDEX_SYMBOLS.keys()) + list(SECTOR_SYMBOLS.keys())
+    url = (
+        "https://query1.finance.yahoo.com/v7/finance/quote"
+        f"?symbols={','.join(all_syms)}&region=US&lang=en-US"
+    )
+    try:
+        resp = await client.get(url, headers={"User-Agent": "Mozilla/5.0 SwingTraderDashboard/1.0"}, timeout=8.0)
+        results = resp.json().get("quoteResponse", {}).get("result", [])
+        data = {}
+        for q in results:
+            sym = q.get("symbol", "")
+            data[sym] = {
+                "price":      round(q.get("regularMarketPrice", 0) or 0, 2),
+                "pct_change": round(q.get("regularMarketChangePercent", 0) or 0, 2),
+            }
+        return data
+    except Exception:
+        return {}
+
 _mover_tickers: set[str] = set()
 _mover_data: dict = {}  # ticker -> {pct_change, volume, price}
 _mover_tickers_fetched_at: float = 0.0
@@ -464,12 +510,13 @@ async def generate_brief(x_api_key: Optional[str] = Header(default=None)):
     session = market_session()
     cfg = BRIEF_CONFIGS[session["session"]]
 
-    # Fetch latest news
+    # Fetch latest news + index/sector data in parallel
     async with httpx.AsyncClient(headers={"User-Agent": "Mozilla/5.0 SwingTraderDashboard/1.0"}) as client:
         feed_tasks = [fetch_feed(client, feed) for feed in FEEDS]
-        feed_results, (mover_tickers, mover_data) = await asyncio.gather(
+        feed_results, (mover_tickers, mover_data), index_data = await asyncio.gather(
             asyncio.gather(*feed_tasks),
             fetch_mover_tickers(client),
+            fetch_index_data(client),
         )
 
     all_items: list = []
@@ -492,39 +539,78 @@ async def generate_brief(x_api_key: Optional[str] = Header(default=None)):
 
     deduped.sort(key=_sort, reverse=True)
 
+    # ── Build index/sector context lines ──
+    def _pct_str(sym):
+        d = index_data.get(sym, {})
+        if not d:
+            return "n/a"
+        sign = "+" if d["pct_change"] >= 0 else ""
+        return f"{sign}{d['pct_change']:.2f}%"
+
+    index_lines = []
+    for sym, label in INDEX_SYMBOLS.items():
+        d = index_data.get(sym, {})
+        if d:
+            sign = "+" if d["pct_change"] >= 0 else ""
+            price_str = f"${d['price']:.2f}" if sym != "^VIX" else str(d["price"])
+            index_lines.append(f"  {label} ({sym}): {price_str}  {sign}{d['pct_change']:.2f}%")
+
+    # Sort sectors best → worst for easy scanning
+    sector_rows = []
+    for sym, label in SECTOR_SYMBOLS.items():
+        d = index_data.get(sym, {})
+        if d:
+            sector_rows.append((d["pct_change"], sym, label))
+    sector_rows.sort(reverse=True)
+    sector_lines = []
+    for pct, sym, label in sector_rows:
+        sign = "+" if pct >= 0 else ""
+        sector_lines.append(f"  {label} ({sym}): {sign}{pct:.2f}%")
+
+    # ── Movers ──
     mover_lines = []
     for sym, d in sorted(mover_data.items(), key=lambda x: x[1].get("vol_ratio", 0), reverse=True)[:8]:
         sign = "+" if d["pct_change"] >= 0 else ""
         mover_lines.append(f"  {sym}: {sign}{d['pct_change']:.2f}% | {d.get('vol_ratio', 0):.1f}x avg vol")
 
+    # ── Headlines ──
     headline_lines = []
-    for item in deduped[:18]:
+    for item in deduped[:20]:
         ticker_note = f" [{item['ticker']}]" if item.get("ticker") else ""
         headline_lines.append(f"- [{item['category'].upper()}]{ticker_note} {item['title']}")
 
-    prompt = f"""You are a concise swing trading analyst writing a {cfg['label']}.
+    prompt = f"""You are a swing trading market analyst writing a {cfg['label']}.
 
 {cfg['focus']}
 
-Top movers by volume surge (vol/avg):
-{chr(10).join(mover_lines) if mover_lines else "  (market closed — no live data)"}
+── INDEXES ──
+{chr(10).join(index_lines) if index_lines else "  (market closed)"}
 
-Today's headlines:
+── SECTORS (best to worst) ──
+{chr(10).join(sector_lines) if sector_lines else "  (market closed)"}
+
+── TOP MOVERS BY VOLUME SURGE ──
+{chr(10).join(mover_lines) if mover_lines else "  (market closed)"}
+
+── HEADLINES ──
 {chr(10).join(headline_lines)}
 
-Write the brief using this structure. Keep each bullet to one tight, specific sentence — no filler, no generic statements:
+Write a detailed swing trader brief using exactly this structure. Each bullet must be specific — name tickers, cite % moves, reference data points. No filler sentences.
 
 **Market Mood**
-[Overall tone: risk-on or risk-off, what's driving it, and how it affects swing setups]
+[2–3 sentences. Cover the overall risk-on/risk-off tone, what SPY/QQQ are signalling, whether small-caps (IWM) are confirming or diverging, and what VIX is telling us about fear/complacency. State clearly whether conditions favour longs, shorts, or staying flat.]
+
+**Sector Rotation**
+[3–4 bullets. Which sectors are leading, which are lagging, and what that rotation implies for swing positioning. Note any sector diverging from the broader market.]
 
 **Top Movers**
-[3–4 bullets. Format: TICKER — what happened and why it moved]
+[4–5 bullets. Format: TICKER — catalyst and % move. Focus on volume-surge stocks since those have the most active participation.]
 
 **Macro & Rates**
-[2 bullets: anything from the Fed, yields, inflation, or global macro that matters for positioning]
+[2–3 bullets. Fed policy, treasury yields (TLT), dollar (DXY), gold (GLD), inflation data, or global macro events relevant to US equities.]
 
 **What to Watch**
-[2–3 bullets: upcoming earnings, catalysts, or chart setups worth having on your radar]"""
+[3–4 bullets. Upcoming earnings, economic releases, technical levels on SPY/QQQ, or individual setups worth putting on the radar before the next session.]"""
 
     try:
         gemini_url = (
@@ -533,10 +619,10 @@ Write the brief using this structure. Keep each bullet to one tight, specific se
         )
         payload = {
             "systemInstruction": {
-                "parts": [{"text": "You are a concise swing trading market analyst. Write tight, specific, actionable briefs. Every bullet must name a ticker, data point, or concrete event — no vague observations."}]
+                "parts": [{"text": "You are an experienced swing trading market analyst. Write detailed, data-driven briefs. Every point must reference a specific ticker, index, percentage move, or concrete event. Avoid vague market commentary — if you mention a trend, cite the instrument and the number."}]
             },
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-            "generationConfig": {"maxOutputTokens": 600, "temperature": 0.4},
+            "generationConfig": {"maxOutputTokens": 1100, "temperature": 0.4},
         }
         async with httpx.AsyncClient(timeout=30.0) as gc:
             resp = await gc.post(gemini_url, json=payload)
