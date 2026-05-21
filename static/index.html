@@ -3,17 +3,16 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>naibai's trading desk</title>
+<title>market news</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Quicksand:wght@400;500;600;700&display=swap" />
 <style>
-  /* ── Reset & base ──────────────────────────────────────────────── */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
     --bg-deep:    #1a1438;
     --bg-mid:     #231a4f;
-    --bg-panel:   rgba(36, 26, 72, 0.82);
+    --bg-panel:   rgba(26, 18, 56, 0.92);
     --bg-card:    rgba(44, 32, 88, 0.72);
     --bg-card-hv: rgba(58, 42, 110, 0.88);
     --purple-1:   #c4b5fd;
@@ -33,6 +32,7 @@
     --glow:       rgba(167, 139, 250, 0.15);
     --radius-card: 18px;
     --radius-pill: 999px;
+    --sidebar-w:  230px;
   }
 
   html, body {
@@ -43,7 +43,7 @@
     overflow-x: hidden;
   }
 
-  /* ── Bokeh background ──────────────────────────────────────────── */
+  /* ── Background ────────────────────────────────────────────────── */
   #bokeh-canvas {
     position: fixed;
     inset: 0;
@@ -54,9 +54,7 @@
   /* ── Fairy lights ──────────────────────────────────────────────── */
   .fairy-string {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
+    top: 0; left: 0; right: 0;
     height: 60px;
     z-index: 1;
     pointer-events: none;
@@ -67,93 +65,146 @@
     50%      { opacity: 1; }
   }
 
-  /* ── Layout ────────────────────────────────────────────────────── */
-  .page-wrap {
+  /* ── Layout shell ──────────────────────────────────────────────── */
+  .layout {
+    display: flex;
+    min-height: 100vh;
     position: relative;
     z-index: 2;
-    max-width: 1380px;
-    margin: 0 auto;
-    padding: 0 20px 60px;
   }
 
-  /* ── Header ────────────────────────────────────────────────────── */
-  header {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    padding: 28px 0 20px;
-    border-bottom: 1px solid var(--border);
-    margin-bottom: 28px;
-    flex-wrap: wrap;
-  }
-
-  .avatar-ring {
-    width: 64px;
-    height: 64px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, var(--purple-2), var(--pink));
-    padding: 3px;
+  /* ── Sidebar ───────────────────────────────────────────────────── */
+  .sidebar {
+    width: var(--sidebar-w);
     flex-shrink: 0;
-    box-shadow: 0 0 22px rgba(167,139,250,0.45);
+    position: fixed;
+    top: 0; left: 0;
+    height: 100vh;
+    overflow-y: auto;
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    padding: 28px 14px 20px;
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border);
+    backdrop-filter: blur(22px);
   }
-  .avatar-ring img {
-    width: 100%;
-    height: 100%;
-    border-radius: 50%;
-    object-fit: cover;
-    background: var(--bg-mid);
-  }
+  .sidebar::-webkit-scrollbar { width: 3px; }
+  .sidebar::-webkit-scrollbar-thumb { background: rgba(167,139,250,0.2); border-radius: 2px; }
 
-  .header-text h1 {
+  .sidebar-brand {
     font-family: 'Nunito', sans-serif;
-    font-size: 1.55rem;
+    font-size: 1.1rem;
     font-weight: 800;
     color: var(--purple-1);
-    line-height: 1;
+    padding: 0 6px 18px;
     letter-spacing: -0.3px;
-  }
-  .header-text p {
-    font-size: 0.8rem;
-    color: var(--text-dim);
-    margin-top: 4px;
-  }
-
-  .header-right {
-    margin-left: auto;
     display: flex;
     align-items: center;
-    gap: 14px;
-    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .sidebar-brand-icon {
+    width: 30px; height: 30px;
+    border-radius: 9px;
+    background: linear-gradient(135deg, var(--purple-3), #5b21b6);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.85rem;
+    box-shadow: 0 2px 10px rgba(124,58,237,0.4);
+    flex-shrink: 0;
   }
 
-  /* Session pill */
+  /* Session pill in sidebar */
   .session-pill {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 6px 14px;
-    border-radius: var(--radius-pill);
+    padding: 9px 12px;
+    border-radius: 12px;
     background: var(--bg-card);
     border: 1px solid var(--border);
-    font-size: 0.78rem;
+    font-size: 0.73rem;
     font-weight: 700;
     color: var(--text-main);
+    margin-bottom: 22px;
     backdrop-filter: blur(8px);
   }
   .session-dot {
-    width: 8px;
-    height: 8px;
+    width: 8px; height: 8px;
     border-radius: 50%;
+    flex-shrink: 0;
     animation: pulse-dot 2s ease-in-out infinite;
   }
   @keyframes pulse-dot {
     0%,100% { opacity: 1; transform: scale(1); }
     50%      { opacity: 0.5; transform: scale(1.35); }
   }
+  #session-time { opacity: 0.6; font-weight: 400; font-size: 0.68rem; }
+
+  .sidebar-section-label {
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 1.1px;
+    color: var(--text-faint);
+    font-weight: 700;
+    padding: 0 8px;
+    margin-bottom: 6px;
+  }
+
+  .sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1;
+    margin-bottom: 18px;
+  }
+
+  /* Chips restyled as sidebar nav items */
+  .chip {
+    width: 100%;
+    text-align: left;
+    padding: 9px 12px;
+    border-radius: 11px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--text-dim);
+    font-family: inherit;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .chip:hover {
+    background: var(--bg-card);
+    border-color: var(--border);
+    color: var(--purple-1);
+  }
+  .chip.active {
+    background: linear-gradient(135deg, rgba(124,58,237,0.45), rgba(109,40,217,0.35));
+    border-color: rgba(167,139,250,0.3);
+    color: #fff;
+    box-shadow: 0 0 14px rgba(167,139,250,0.12);
+  }
+
+  .sidebar-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 8px 0;
+  }
+
+  .sidebar-footer {
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
 
   .refresh-btn {
-    padding: 7px 16px;
-    border-radius: var(--radius-pill);
+    padding: 8px 14px;
+    border-radius: 11px;
     background: linear-gradient(135deg, var(--purple-3), #5b21b6);
     border: none;
     color: #fff;
@@ -162,68 +213,55 @@
     font-weight: 700;
     cursor: pointer;
     transition: box-shadow 0.2s, transform 0.15s;
-    box-shadow: 0 4px 14px rgba(124,58,237,0.4);
+    box-shadow: 0 4px 14px rgba(124,58,237,0.35);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: 100%;
+    justify-content: center;
   }
-  .refresh-btn:hover { box-shadow: 0 6px 22px rgba(124,58,237,0.6); transform: translateY(-1px); }
+  .refresh-btn:hover { box-shadow: 0 6px 22px rgba(124,58,237,0.55); transform: translateY(-1px); }
   .refresh-btn:active { transform: translateY(0); }
   .refresh-btn.spinning svg { animation: spin 0.9s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
 
   .last-updated {
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     color: var(--text-faint);
+    text-align: center;
   }
 
-  /* ── Stats strip ───────────────────────────────────────────────── */
-  .stats-strip {
-    display: flex;
-    gap: 12px;
-    margin-bottom: 28px;
-    flex-wrap: wrap;
-  }
-  .stat-card {
+  /* ── Main content ──────────────────────────────────────────────── */
+  .main-wrap {
     flex: 1;
-    min-width: 130px;
-    background: var(--bg-card);
-    border: 1px solid var(--border);
-    border-radius: var(--radius-card);
-    padding: 14px 18px;
-    backdrop-filter: blur(10px);
-    transition: border-color 0.2s, box-shadow 0.2s;
+    margin-left: var(--sidebar-w);
+    padding: 0 28px 60px;
+    min-width: 0;
   }
-  .stat-card:hover { border-color: var(--border-hv); box-shadow: 0 0 18px var(--glow); }
-  .stat-card .label { font-size: 0.72rem; color: var(--text-dim); margin-bottom: 5px; font-weight: 600; }
-  .stat-card .value { font-size: 1.5rem; font-weight: 800; color: var(--purple-1); font-family: 'Nunito', sans-serif; line-height: 1; }
-  .stat-card .sub   { font-size: 0.68rem; color: var(--text-faint); margin-top: 4px; }
 
-  /* ── Filter bar ────────────────────────────────────────────────── */
-  .filter-bar {
+  /* ── Top bar ───────────────────────────────────────────────────── */
+  .topbar {
     display: flex;
-    gap: 8px;
-    margin-bottom: 22px;
-    flex-wrap: wrap;
     align-items: center;
+    justify-content: space-between;
+    padding: 22px 0 20px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
   }
-  .filter-label { font-size: 0.72rem; color: var(--text-faint); margin-right: 2px; font-weight: 600; }
-
-  .chip {
-    padding: 5px 14px;
-    border-radius: var(--radius-pill);
-    border: 1px solid var(--border);
-    background: var(--bg-card);
-    color: var(--text-dim);
-    font-family: inherit;
+  .topbar-title {
+    font-family: 'Nunito', sans-serif;
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--purple-1);
+    letter-spacing: -0.3px;
+  }
+  .topbar-sub {
     font-size: 0.75rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.18s;
-    backdrop-filter: blur(6px);
+    color: var(--text-faint);
+    margin-top: 2px;
   }
-  .chip:hover    { border-color: var(--purple-2); color: var(--purple-1); }
-  .chip.active   { background: linear-gradient(135deg, rgba(124,58,237,0.55), rgba(109,40,217,0.55)); border-color: var(--purple-2); color: #fff; box-shadow: 0 0 12px rgba(167,139,250,0.25); }
 
   .search-wrap {
-    margin-left: auto;
     position: relative;
   }
   .search-wrap svg {
@@ -241,8 +279,8 @@
     color: var(--text-main);
     font-family: inherit;
     font-size: 0.78rem;
-    padding: 7px 14px 7px 34px;
-    width: 200px;
+    padding: 8px 16px 8px 34px;
+    width: 220px;
     outline: none;
     transition: border-color 0.2s, box-shadow 0.2s;
     backdrop-filter: blur(6px);
@@ -250,167 +288,30 @@
   #search-input::placeholder { color: var(--text-faint); }
   #search-input:focus { border-color: var(--purple-2); box-shadow: 0 0 12px rgba(167,139,250,0.2); }
 
-  /* ── Grid ──────────────────────────────────────────────────────── */
-  #news-grid {
+  /* ── Stats strip ───────────────────────────────────────────────── */
+  .stats-strip {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
-    gap: 16px;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 12px;
+    margin-bottom: 24px;
   }
-
-  /* ── News card ─────────────────────────────────────────────────── */
-  .news-card {
+  .stat-card {
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: var(--radius-card);
-    padding: 18px 20px 16px;
-    backdrop-filter: blur(12px);
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
-    cursor: pointer;
-    color: inherit;
-    position: relative;
-    overflow: hidden;
+    padding: 16px 18px;
+    backdrop-filter: blur(10px);
+    transition: border-color 0.2s, box-shadow 0.2s;
   }
-  .news-card::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    border-radius: var(--radius-card);
-    background: linear-gradient(135deg, rgba(167,139,250,0.06), transparent 60%);
-    pointer-events: none;
-  }
-  .news-card:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 8px 32px rgba(124,58,237,0.22), 0 0 0 1px var(--border-hv);
-    border-color: var(--border-hv);
-    background: var(--bg-card-hv);
-  }
-
-  .card-meta {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-  }
-
-  .cat-badge {
-    padding: 3px 10px;
-    border-radius: var(--radius-pill);
-    font-size: 0.65rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-  }
-  .cat-macro      { background: rgba(147,197,253,0.18); color: var(--blue-soft); }
-  .cat-markets    { background: rgba(196,181,253,0.18); color: var(--purple-1); }
-  .cat-earnings   { background: rgba(252,211,77,0.18);  color: var(--gold); }
-  .cat-sector     { background: rgba(240,171,252,0.18); color: var(--pink); }
-  .cat-fed        { background: rgba(110,231,183,0.18); color: var(--green); }
-  .cat-regulatory { background: rgba(251,191,36,0.18);  color: var(--amber); }
-
-  .source-name {
-    font-size: 0.68rem;
-    color: var(--text-faint);
-    font-weight: 600;
-  }
-
-  .time-ago {
-    font-size: 0.65rem;
-    color: var(--text-faint);
-    margin-left: auto;
-  }
-
-  .card-title {
-    font-size: 0.92rem;
-    font-weight: 700;
-    color: var(--text-main);
-    line-height: 1.42;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-  .news-card:hover .card-title { color: var(--purple-1); }
-
-  .card-summary {
-    font-size: 0.78rem;
-    color: var(--text-dim);
-    line-height: 1.55;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
-
-  .card-footer {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin-top: 2px;
-  }
-  .bias-tag {
-    font-size: 0.62rem;
-    color: var(--text-faint);
-    background: rgba(109,94,138,0.22);
-    padding: 2px 8px;
-    border-radius: var(--radius-pill);
-  }
-  .read-link {
-    margin-left: auto;
-    font-size: 0.7rem;
-    font-weight: 700;
-    color: var(--purple-2);
-    text-decoration: none;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    transition: color 0.15s;
-  }
-  .read-link:hover { color: var(--pink); }
-
-  /* ── Loading / empty states ────────────────────────────────────── */
-  #loading-state {
-    grid-column: 1 / -1;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 16px;
-    padding: 80px 20px;
-    color: var(--text-dim);
-  }
-  .loader-ring {
-    width: 48px;
-    height: 48px;
-    border: 3px solid var(--border);
-    border-top-color: var(--purple-2);
-    border-radius: 50%;
-    animation: spin 0.9s linear infinite;
-  }
-
-  #empty-state {
-    grid-column: 1 / -1;
-    text-align: center;
-    padding: 60px 20px;
-    color: var(--text-faint);
-    display: none;
-  }
-  #empty-state svg { margin-bottom: 12px; opacity: 0.4; }
-
-  /* ── Scrollbar ─────────────────────────────────────────────────── */
-  ::-webkit-scrollbar { width: 6px; }
-  ::-webkit-scrollbar-track { background: transparent; }
-  ::-webkit-scrollbar-thumb { background: rgba(167,139,250,0.3); border-radius: 3px; }
-  ::-webkit-scrollbar-thumb:hover { background: rgba(167,139,250,0.55); }
+  .stat-card:hover { border-color: var(--border-hv); box-shadow: 0 0 18px var(--glow); }
+  .stat-card .label { font-size: 0.7rem; color: var(--text-dim); margin-bottom: 6px; font-weight: 600; }
+  .stat-card .value { font-size: 1.65rem; font-weight: 800; color: var(--purple-1); font-family: 'Nunito', sans-serif; line-height: 1; }
+  .stat-card .sub   { font-size: 0.65rem; color: var(--text-faint); margin-top: 5px; }
 
   /* ── Movers strip ──────────────────────────────────────────────── */
-  .movers-strip {
-    margin-bottom: 22px;
-  }
+  .movers-strip { margin-bottom: 22px; }
   .movers-strip-label {
-    font-size: 0.75rem;
+    font-size: 0.72rem;
     color: var(--text-dim);
     font-weight: 600;
     margin-bottom: 10px;
@@ -425,6 +326,7 @@
   }
   .movers-scroll::-webkit-scrollbar { height: 4px; }
   .movers-scroll::-webkit-scrollbar-thumb { background: rgba(167,139,250,0.3); border-radius: 2px; }
+
   .ticker-card {
     flex-shrink: 0;
     background: var(--bg-card);
@@ -448,35 +350,13 @@
     gap: 8px;
     margin-bottom: 5px;
   }
-  .ticker-sym {
-    font-family: 'Nunito', sans-serif;
-    font-size: 1.05rem;
-    font-weight: 800;
-    color: var(--purple-1);
-    letter-spacing: -0.2px;
-  }
-  .ticker-price {
-    font-size: 0.82rem;
-    font-weight: 700;
-    color: var(--text-main);
-  }
-  .ticker-pct {
-    font-size: 0.88rem;
-    font-weight: 800;
-    margin-bottom: 4px;
-  }
+  .ticker-sym  { font-family: 'Nunito', sans-serif; font-size: 1.05rem; font-weight: 800; color: var(--purple-1); letter-spacing: -0.2px; }
+  .ticker-price { font-size: 0.82rem; font-weight: 700; color: var(--text-main); }
+  .ticker-pct  { font-size: 0.88rem; font-weight: 800; margin-bottom: 4px; }
   .ticker-pct.up   { color: var(--green); }
   .ticker-pct.down { color: var(--red-soft); }
-  .ticker-row {
-    display: flex;
-    justify-content: space-between;
-    gap: 6px;
-  }
-  .ticker-stat {
-    font-size: 0.64rem;
-    color: var(--text-faint);
-    line-height: 1.6;
-  }
+  .ticker-row  { display: flex; justify-content: space-between; gap: 6px; }
+  .ticker-stat { font-size: 0.64rem; color: var(--text-faint); line-height: 1.6; }
   .ticker-stat span { color: var(--text-dim); font-weight: 600; }
 
   /* ── Brief panel ───────────────────────────────────────────────── */
@@ -518,27 +398,16 @@
     font-weight: 800;
     color: var(--purple-1);
   }
-  .brief-subtitle {
-    font-size: 0.7rem;
-    color: var(--text-faint);
-    margin-top: 1px;
-  }
-  .brief-chevron {
-    color: var(--text-faint);
-    transition: transform 0.25s;
-    flex-shrink: 0;
-  }
+  .brief-subtitle { font-size: 0.7rem; color: var(--text-faint); margin-top: 1px; }
+  .brief-chevron { color: var(--text-faint); transition: transform 0.25s; flex-shrink: 0; }
   .brief-panel.open .brief-chevron { transform: rotate(180deg); }
 
   .brief-generate-btn {
     padding: 6px 16px;
     border-radius: var(--radius-pill);
     background: linear-gradient(135deg, var(--purple-3), #5b21b6);
-    border: none;
-    color: #fff;
-    font-family: inherit;
-    font-size: 0.75rem;
-    font-weight: 700;
+    border: none; color: #fff;
+    font-family: inherit; font-size: 0.75rem; font-weight: 700;
     cursor: pointer;
     box-shadow: 0 3px 10px rgba(124,58,237,0.35);
     transition: box-shadow 0.2s, transform 0.15s, opacity 0.15s;
@@ -549,12 +418,10 @@
   .brief-generate-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
 
   .brief-key-btn {
-    width: 32px; height: 32px;
-    border-radius: 50%;
+    width: 32px; height: 32px; border-radius: 50%;
     border: 1px solid var(--border);
     background: var(--bg-card);
-    font-size: 0.85rem;
-    cursor: pointer;
+    font-size: 0.85rem; cursor: pointer;
     display: flex; align-items: center; justify-content: center;
     transition: border-color 0.18s, box-shadow 0.18s;
     flex-shrink: 0;
@@ -564,47 +431,33 @@
   .brief-body { padding: 20px 24px 22px; display: none; }
   .brief-panel.open .brief-body { display: block; }
 
-  /* Key input row */
   .brief-key-row {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-    margin-bottom: 16px;
-    padding: 12px 14px;
+    display: flex; gap: 10px; align-items: center;
+    margin-bottom: 16px; padding: 12px 14px;
     background: rgba(124,58,237,0.08);
     border: 1px solid rgba(124,58,237,0.2);
-    border-radius: 12px;
-    flex-wrap: wrap;
+    border-radius: 12px; flex-wrap: wrap;
   }
   .brief-key-row label { font-size: 0.72rem; color: var(--text-dim); font-weight: 600; white-space: nowrap; }
   .brief-key-input {
-    flex: 1;
-    min-width: 180px;
+    flex: 1; min-width: 180px;
     background: rgba(0,0,0,0.25);
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    color: var(--text-main);
-    font-family: monospace;
-    font-size: 0.75rem;
-    padding: 6px 10px;
-    outline: none;
+    border: 1px solid var(--border); border-radius: 8px;
+    color: var(--text-main); font-family: monospace;
+    font-size: 0.75rem; padding: 6px 10px; outline: none;
     transition: border-color 0.18s;
   }
   .brief-key-input:focus { border-color: var(--purple-2); }
   .brief-key-input::placeholder { color: var(--text-faint); font-family: inherit; }
   .brief-key-save {
-    padding: 5px 12px;
-    border-radius: 8px;
-    background: var(--purple-3);
-    border: none; color: #fff;
+    padding: 5px 12px; border-radius: 8px;
+    background: var(--purple-3); border: none; color: #fff;
     font-family: inherit; font-size: 0.72rem; font-weight: 700;
-    cursor: pointer; white-space: nowrap;
-    transition: opacity 0.15s;
+    cursor: pointer; white-space: nowrap; transition: opacity 0.15s;
   }
   .brief-key-save:hover { opacity: 0.85; }
   .brief-key-saved { font-size: 0.7rem; color: var(--green); display: none; }
 
-  /* Brief content */
   .brief-loading {
     display: flex; align-items: center; gap: 12px;
     padding: 12px 0; color: var(--text-dim); font-size: 0.82rem;
@@ -621,55 +474,144 @@
   .brief-section { margin-bottom: 18px; }
   .brief-section:last-child { margin-bottom: 0; }
   .brief-section-title {
-    font-family: 'Nunito', sans-serif;
-    font-size: 0.8rem;
-    font-weight: 800;
-    color: var(--purple-2);
-    text-transform: uppercase;
-    letter-spacing: 0.8px;
-    margin-bottom: 8px;
+    font-family: 'Nunito', sans-serif; font-size: 0.8rem; font-weight: 800;
+    color: var(--purple-2); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 8px;
   }
   .brief-section ul { list-style: none; display: flex; flex-direction: column; gap: 6px; }
   .brief-section ul li {
-    font-size: 0.83rem;
-    color: var(--text-main);
-    line-height: 1.5;
-    padding-left: 14px;
-    position: relative;
+    font-size: 0.83rem; color: var(--text-main); line-height: 1.5;
+    padding-left: 14px; position: relative;
   }
-  .brief-section ul li::before {
-    content: '·';
-    position: absolute; left: 0;
-    color: var(--purple-2); font-weight: 800;
-  }
+  .brief-section ul li::before { content: '·'; position: absolute; left: 0; color: var(--purple-2); font-weight: 800; }
   .brief-mood {
-    font-size: 0.88rem;
-    color: var(--text-main);
-    line-height: 1.55;
+    font-size: 0.88rem; color: var(--text-main); line-height: 1.55;
     padding: 10px 14px;
     background: rgba(167,139,250,0.07);
     border-left: 3px solid var(--purple-2);
     border-radius: 0 8px 8px 0;
   }
   .brief-meta {
-    font-size: 0.68rem;
-    color: var(--text-faint);
-    margin-top: 16px;
-    padding-top: 12px;
+    font-size: 0.68rem; color: var(--text-faint);
+    margin-top: 16px; padding-top: 12px;
     border-top: 1px solid var(--border);
   }
 
+  /* ── News grid ─────────────────────────────────────────────────── */
+  #news-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 16px;
+  }
+
+  .news-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-card);
+    padding: 18px 20px 16px;
+    backdrop-filter: blur(12px);
+    display: flex; flex-direction: column; gap: 10px;
+    transition: transform 0.2s, box-shadow 0.2s, border-color 0.2s;
+    cursor: pointer; color: inherit; position: relative; overflow: hidden;
+  }
+  .news-card::before {
+    content: ''; position: absolute; inset: 0; border-radius: var(--radius-card);
+    background: linear-gradient(135deg, rgba(167,139,250,0.06), transparent 60%);
+    pointer-events: none;
+  }
+  .news-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 32px rgba(124,58,237,0.22), 0 0 0 1px var(--border-hv);
+    border-color: var(--border-hv);
+    background: var(--bg-card-hv);
+  }
+
+  .card-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .cat-badge {
+    padding: 3px 10px; border-radius: var(--radius-pill);
+    font-size: 0.65rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: 0.5px;
+  }
+  .cat-macro      { background: rgba(147,197,253,0.18); color: var(--blue-soft); }
+  .cat-markets    { background: rgba(196,181,253,0.18); color: var(--purple-1); }
+  .cat-earnings   { background: rgba(252,211,77,0.18);  color: var(--gold); }
+  .cat-sector     { background: rgba(240,171,252,0.18); color: var(--pink); }
+  .cat-fed        { background: rgba(110,231,183,0.18); color: var(--green); }
+  .cat-regulatory { background: rgba(251,191,36,0.18);  color: var(--amber); }
+
+  .source-name { font-size: 0.68rem; color: var(--text-faint); font-weight: 600; }
+  .time-ago    { font-size: 0.65rem; color: var(--text-faint); margin-left: auto; }
+
+  .card-title {
+    font-size: 0.92rem; font-weight: 700; color: var(--text-main); line-height: 1.42;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .news-card:hover .card-title { color: var(--purple-1); }
+
+  .card-summary {
+    font-size: 0.78rem; color: var(--text-dim); line-height: 1.55;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+
+  .card-footer { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+  .bias-tag {
+    font-size: 0.62rem; color: var(--text-faint);
+    background: rgba(109,94,138,0.22); padding: 2px 8px; border-radius: var(--radius-pill);
+  }
+  .read-link {
+    margin-left: auto; font-size: 0.7rem; font-weight: 700; color: var(--purple-2);
+    text-decoration: none; display: flex; align-items: center; gap: 4px; transition: color 0.15s;
+  }
+  .read-link:hover { color: var(--pink); }
+
+  /* ── Loading / empty ───────────────────────────────────────────── */
+  #loading-state {
+    grid-column: 1 / -1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; gap: 16px;
+    padding: 80px 20px; color: var(--text-dim);
+  }
+  .loader-ring {
+    width: 48px; height: 48px;
+    border: 3px solid var(--border); border-top-color: var(--purple-2);
+    border-radius: 50%; animation: spin 0.9s linear infinite;
+  }
+  #empty-state {
+    grid-column: 1 / -1; text-align: center; padding: 60px 20px;
+    color: var(--text-faint); display: none;
+  }
+  #empty-state svg { margin-bottom: 12px; opacity: 0.4; }
+
+  /* ── Scrollbar ─────────────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(167,139,250,0.3); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(167,139,250,0.55); }
+
   /* ── Responsive ────────────────────────────────────────────────── */
+  @media (max-width: 900px) {
+    .sidebar { width: 100%; height: auto; position: relative; flex-direction: row; flex-wrap: wrap; padding: 14px 16px; gap: 10px; border-right: none; border-bottom: 1px solid var(--border); }
+    .sidebar-brand { padding-bottom: 0; margin-bottom: 0; }
+    .sidebar-section-label { display: none; }
+    .sidebar-nav { flex-direction: row; flex: none; gap: 4px; }
+    .chip { width: auto; padding: 6px 12px; }
+    .sidebar-footer { flex-direction: row; align-items: center; margin-left: auto; padding-top: 0; border-top: none; }
+    .session-pill { margin-bottom: 0; }
+    .main-wrap { margin-left: 0; padding: 0 16px 40px; }
+    .stats-strip { grid-template-columns: repeat(3, 1fr); }
+    .topbar-title { display: none; }
+  }
   @media (max-width: 600px) {
+    .stats-strip { grid-template-columns: repeat(2, 1fr); }
     #news-grid { grid-template-columns: 1fr; }
-    .header-right { width: 100%; justify-content: flex-start; }
-    #search-input { width: 140px; }
+    #search-input { width: 150px; }
   }
 </style>
 </head>
 <body>
 
-<!-- Fairy lights SVG (top of page) -->
+<!-- Bokeh background -->
+<canvas id="bokeh-canvas"></canvas>
+
+<!-- Fairy lights -->
 <svg class="fairy-string" viewBox="0 0 1400 60" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <radialGradient id="bulb" cx="50%" cy="50%" r="50%">
@@ -679,126 +621,122 @@
   </defs>
   <path d="M0,14 Q175,40 350,14 Q525,-12 700,14 Q875,40 1050,14 Q1225,-12 1400,14"
         fill="none" stroke="rgba(167,139,250,0.25)" stroke-width="1.5"/>
-  <!-- Bulbs -->
   <g id="bulbs"></g>
 </svg>
 
-<canvas id="bokeh-canvas"></canvas>
+<div class="layout">
 
-<div class="page-wrap">
-  <!-- ── Header ── -->
-  <header>
-    <div class="avatar-ring">
-      <img src="" alt="naibai" id="avatar-img" onerror="this.style.display='none'" />
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="sidebar-brand">
+      <div class="sidebar-brand-icon">✦</div>
+      market news
     </div>
-    <div class="header-text">
-      <h1>naibai's trading desk ✦</h1>
+
+    <div class="session-pill">
+      <span class="session-dot" id="session-dot" style="background:#94a3b8"></span>
+      <span id="session-label">Loading…</span>
+      <span id="session-time"></span>
     </div>
-    <div class="header-right">
-      <div class="session-pill">
-        <span class="session-dot" id="session-dot" style="background:#94a3b8"></span>
-        <span id="session-label">Loading…</span>
-        <span id="session-time" style="opacity:0.6;font-weight:400"></span>
-      </div>
+
+    <div class="sidebar-section-label">categories</div>
+    <nav class="sidebar-nav">
+      <button class="chip active" data-cat="all"        onclick="setFilter('all')">📰 All</button>
+      <button class="chip"        data-cat="macro"      onclick="setFilter('macro')">📊 Macro</button>
+      <button class="chip"        data-cat="markets"    onclick="setFilter('markets')">📈 Markets</button>
+      <button class="chip"        data-cat="earnings"   onclick="setFilter('earnings')">💰 Earnings</button>
+      <button class="chip"        data-cat="sector"     onclick="setFilter('sector')">🏭 Sectors</button>
+      <button class="chip"        data-cat="fed"        onclick="setFilter('fed')">🏦 Fed / Rates</button>
+      <button class="chip"        data-cat="regulatory" onclick="setFilter('regulatory')">📋 Regulatory</button>
+      <div class="sidebar-divider"></div>
+      <button class="chip"        data-cat="movers"     onclick="setFilter('movers')">🚀 Movers only</button>
+    </nav>
+
+    <div class="sidebar-footer">
       <button class="refresh-btn" id="refresh-btn" onclick="loadNews()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="display:inline;vertical-align:middle;margin-right:5px"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M1 4v6h6"/><path d="M23 20v-6h-6"/><path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/></svg>
         Refresh
       </button>
       <span class="last-updated" id="last-updated"></span>
     </div>
-  </header>
+  </aside>
 
-  <!-- ── Brief panel ── -->
-  <div class="brief-panel" id="brief-panel">
-    <div class="brief-header" onclick="toggleBrief()">
-      <div class="brief-header-left">
-        <div class="brief-icon" id="brief-panel-icon">✦</div>
-        <div>
-          <div class="brief-title" id="brief-panel-title">Market Brief</div>
-          <div class="brief-subtitle" id="brief-subtitle">click to read your brief ✦</div>
+  <!-- ── Main ── -->
+  <main class="main-wrap">
+
+    <!-- Top bar -->
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">market news ✦</div>
+        <div class="topbar-sub">pre &amp; post market · swing trading</div>
+      </div>
+      <div class="search-wrap">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="search-input" placeholder="Search ticker, topic…" oninput="applyFilters()" />
+      </div>
+    </div>
+
+    <!-- Stats strip -->
+    <div class="stats-strip" id="stats-strip">
+      <div class="stat-card"><div class="label">✦ stories today</div><div class="value" id="stat-total">—</div><div class="sub">from all sources</div></div>
+      <div class="stat-card"><div class="label">🚀 moving</div><div class="value" id="stat-movers">—</div><div class="sub">catalyst stories</div></div>
+      <div class="stat-card"><div class="label">🌐 macro & rates</div><div class="value" id="stat-macro">—</div><div class="sub">fed, gdp, yields</div></div>
+      <div class="stat-card"><div class="label">💰 earnings</div><div class="value" id="stat-earnings">—</div><div class="sub">corporate results</div></div>
+      <div class="stat-card"><div class="label">📋 regulatory</div><div class="value" id="stat-reg">—</div><div class="sub">sec & fed</div></div>
+    </div>
+
+    <!-- Brief panel -->
+    <div class="brief-panel" id="brief-panel">
+      <div class="brief-header" onclick="toggleBrief()">
+        <div class="brief-header-left">
+          <div class="brief-icon" id="brief-panel-icon">✦</div>
+          <div>
+            <div class="brief-title" id="brief-panel-title">Market Brief</div>
+            <div class="brief-subtitle" id="brief-subtitle">click to read your brief ✦</div>
+          </div>
         </div>
+        <button class="brief-generate-btn" id="brief-gen-btn" onclick="event.stopPropagation();generateBrief()">Generate</button>
+        <button class="brief-key-btn" id="brief-key-btn" onclick="event.stopPropagation();showKeyInput()" title="Set API Key">🔑</button>
+        <svg class="brief-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
       </div>
-      <button class="brief-generate-btn" id="brief-gen-btn" onclick="event.stopPropagation();generateBrief()">Generate</button>
-      <button class="brief-key-btn" id="brief-key-btn" onclick="event.stopPropagation();showKeyInput()" title="Set API Key">🔑</button>
-      <svg class="brief-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-    </div>
-    <div class="brief-body" id="brief-body">
-      <!-- API key row — hidden once key is saved -->
-      <div class="brief-key-row" id="brief-key-row">
-        <label>Gemini API Key</label>
-        <input class="brief-key-input" id="brief-key-input" type="password" placeholder="AIza..." autocomplete="off" />
-        <button class="brief-key-save" onclick="saveKey()">Save</button>
-        <span class="brief-key-saved" id="brief-key-saved">✓ Saved</span>
+      <div class="brief-body" id="brief-body">
+        <div class="brief-key-row" id="brief-key-row">
+          <label>Gemini API Key</label>
+          <input class="brief-key-input" id="brief-key-input" type="password" placeholder="AIza..." autocomplete="off" />
+          <button class="brief-key-save" onclick="saveKey()">Save</button>
+          <span class="brief-key-saved" id="brief-key-saved">✓ Saved</span>
+        </div>
+        <div class="brief-loading" id="brief-loading" style="display:none">
+          <div class="brief-loader"></div>
+          Reading headlines and generating your brief…
+        </div>
+        <div class="brief-error" id="brief-error"></div>
+        <div class="brief-content" id="brief-content"></div>
+        <div class="brief-meta" id="brief-meta" style="display:none"></div>
       </div>
-      <div class="brief-loading" id="brief-loading" style="display:none">
-        <div class="brief-loader"></div>
-        Reading headlines and generating your brief…
+    </div>
+
+    <!-- Movers strip -->
+    <div class="movers-strip">
+      <div class="movers-strip-label">what's moving today ✦</div>
+      <div class="movers-scroll" id="movers-scroll">
+        <span style="font-size:0.78rem;color:var(--text-faint);align-self:center">Loading…</span>
       </div>
-      <div class="brief-error" id="brief-error"></div>
-      <div class="brief-content" id="brief-content"></div>
-      <div class="brief-meta" id="brief-meta" style="display:none"></div>
     </div>
-  </div>
 
-  <!-- ── Stats strip ── -->
-  <div class="stats-strip" id="stats-strip">
-    <div class="stat-card"><div class="label">✦ stories today</div><div class="value" id="stat-total">—</div><div class="sub">from all sources</div></div>
-    <div class="stat-card"><div class="label">🚀 moving</div><div class="value" id="stat-movers">—</div><div class="sub">catalyst stories</div></div>
-    <div class="stat-card"><div class="label">🌐 macro & rates</div><div class="value" id="stat-macro">—</div><div class="sub">fed, gdp, yields</div></div>
-    <div class="stat-card"><div class="label">💰 earnings</div><div class="value" id="stat-earnings">—</div><div class="sub">corporate results</div></div>
-    <div class="stat-card"><div class="label">📋 regulatory</div><div class="value" id="stat-reg">—</div><div class="sub">sec & fed</div></div>
-  </div>
+    <!-- News grid -->
+    <div id="news-grid">
+      <div id="loading-state">
+        <div class="loader-ring"></div>
+        <span style="font-size:0.85rem">Fetching market news…</span>
+      </div>
+      <div id="empty-state">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.172 16.172a4 4 0 0 1 5.656 0"/><circle cx="9" cy="10" r="1"/><circle cx="15" cy="10" r="1"/><circle cx="12" cy="21" r="9"/></svg>
+        <p style="margin-top:8px;font-size:0.85rem">No stories match that filter.</p>
+      </div>
+    </div>
 
-  <!-- ── Movers strip ── -->
-  <div class="movers-strip">
-    <div class="movers-strip-label">what's moving today ✦</div>
-    <div class="movers-scroll" id="movers-scroll">
-      <span style="font-size:0.78rem;color:var(--text-faint);align-self:center">Loading…</span>
-    </div>
-  </div>
-
-  <!-- ── Filters ── -->
-  <div class="filter-bar">
-    <span class="filter-label">show me</span>
-    <button class="chip active" data-cat="all" onclick="setFilter('all')">All</button>
-    <button class="chip" data-cat="macro" onclick="setFilter('macro')">
-      📊 Macro
-    </button>
-    <button class="chip" data-cat="markets" onclick="setFilter('markets')">
-      📈 Markets
-    </button>
-    <button class="chip" data-cat="earnings" onclick="setFilter('earnings')">
-      💰 Earnings
-    </button>
-    <button class="chip" data-cat="sector" onclick="setFilter('sector')">
-      🏭 Sectors
-    </button>
-    <button class="chip" data-cat="fed" onclick="setFilter('fed')">
-      🏦 Fed / Rates
-    </button>
-    <button class="chip" data-cat="regulatory" onclick="setFilter('regulatory')">
-      📋 Regulatory
-    </button>
-    <button class="chip" data-cat="movers" onclick="setFilter('movers')">
-      🚀 Movers
-    </button>
-    <div class="search-wrap">
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-      <input type="text" id="search-input" placeholder="Search ticker, topic…" oninput="applyFilters()" />
-    </div>
-  </div>
-
-  <!-- ── News grid ── -->
-  <div id="news-grid">
-    <div id="loading-state">
-      <div class="loader-ring"></div>
-      <span style="font-size:0.85rem">Fetching market news…</span>
-    </div>
-    <div id="empty-state">
-      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9.172 16.172a4 4 0 0 1 5.656 0"/><circle cx="9" cy="10" r="1"/><circle cx="15" cy="10" r="1"/><circle cx="12" cy="21" r="9"/></svg>
-      <p style="margin-top:8px;font-size:0.85rem">No stories match that filter.</p>
-    </div>
-  </div>
+  </main>
 </div>
 
 <script>
@@ -842,7 +780,6 @@ let activeFilter = 'all';
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Deep gradient backdrop
     const grad = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
     grad.addColorStop(0, '#1a1438');
     grad.addColorStop(0.5, '#1e1645');
@@ -861,8 +798,7 @@ let activeFilter = 'all';
       ctx.fillStyle = rg;
       ctx.fill();
 
-      o.x += o.dx;
-      o.y += o.dy;
+      o.x += o.dx; o.y += o.dy;
       if (o.x < -o.r)  o.x = canvas.width  + o.r;
       if (o.x > canvas.width  + o.r) o.x = -o.r;
       if (o.y < -o.r)  o.y = canvas.height + o.r;
@@ -883,7 +819,6 @@ let activeFilter = 'all';
 
   positions.forEach((t, i) => {
     const x = t * 1400;
-    // Replicate the path y: Q175,40 Q525,-12 etc.
     const seg = Math.floor(t * 4);
     const segT = (t * 4) - seg;
     const yVals = [14, 40, 14, -12, 14, 40, 14, -12, 14];
@@ -903,7 +838,6 @@ let activeFilter = 'all';
     circle.setAttribute('opacity', '0.85');
     g.appendChild(circle);
 
-    // Glow
     const glow = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     glow.setAttribute('cx', x);
     glow.setAttribute('cy', Math.max(4, Math.min(56, y + 8)));
@@ -918,15 +852,13 @@ let activeFilter = 'all';
 function timeAgo(iso) {
   if (!iso) return '';
   const diff = (Date.now() - new Date(iso)) / 1000;
-  if (diff < 60)   return `${Math.floor(diff)}s ago`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400)return `${Math.floor(diff / 3600)}h ago`;
+  if (diff < 60)    return `${Math.floor(diff)}s ago`;
+  if (diff < 3600)  return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
-function catClass(cat) {
-  return `cat-${cat}`;
-}
+function catClass(cat) { return `cat-${cat}`; }
 
 function catLabel(cat) {
   const map = { macro:'Macro', markets:'Markets', earnings:'Earnings', sector:'Sector', fed:'Fed/Rates', regulatory:'Regulatory' };
@@ -938,9 +870,7 @@ function biasColor(bias) {
   return map[bias] || '#6d5e8a';
 }
 
-function isMover(item) {
-  return item.is_mover_news === true;
-}
+function isMover(item) { return item.is_mover_news === true; }
 
 function buildCard(item) {
   const ago = timeAgo(item.published);
@@ -1019,7 +949,6 @@ function applyFilters() {
     (i.summary || '').toLowerCase().includes(q)
   );
 
-  // Remove old cards (keep loading/empty states)
   grid.querySelectorAll('.news-card').forEach(el => el.remove());
 
   if (filtered.length === 0) {
@@ -1028,9 +957,7 @@ function applyFilters() {
     empty.style.alignItems = 'center';
   } else {
     empty.style.display = 'none';
-    filtered.forEach(item => {
-      grid.insertAdjacentHTML('beforeend', buildCard(item));
-    });
+    filtered.forEach(item => grid.insertAdjacentHTML('beforeend', buildCard(item)));
   }
 }
 
@@ -1044,9 +971,9 @@ async function updateSession() {
   try {
     const res  = await fetch('/api/session');
     const data = await res.json();
-    document.getElementById('session-dot').style.background  = data.color;
-    document.getElementById('session-label').textContent     = data.label;
-    document.getElementById('session-time').textContent      = data.et_time;
+    document.getElementById('session-dot').style.background = data.color;
+    document.getElementById('session-label').textContent    = data.label;
+    document.getElementById('session-time').textContent     = data.et_time;
   } catch {}
 }
 
@@ -1105,15 +1032,15 @@ function showKeyInput() {
 }
 
 function parseBrief(text) {
-  // Split into sections by **Heading** markers
   const sections = [];
   const lines = text.split('\n').filter(l => l.trim());
   let current = null;
   for (const line of lines) {
-    const heading = line.match(/^\*\*(.+?)\*\*$/);
+    const heading = line.match(/^\*\*(.+?)\*\*[:\s]?(.*)$/);
     if (heading) {
       if (current) sections.push(current);
       current = { title: heading[1], items: [] };
+      if (heading[2].trim()) current.items.push(heading[2].trim());
     } else if (current) {
       const clean = line.replace(/^[\-\•]\s*/, '').trim();
       if (clean) current.items.push(clean);
@@ -1127,13 +1054,8 @@ function renderBrief(data) {
   const content = document.getElementById('brief-content');
   const meta    = document.getElementById('brief-meta');
 
-  // Update panel title + icon to match session
-  if (data.brief_label) {
-    document.getElementById('brief-panel-title').textContent = data.brief_label;
-  }
-  if (data.brief_icon) {
-    document.getElementById('brief-panel-icon').textContent = data.brief_icon;
-  }
+  if (data.brief_label) document.getElementById('brief-panel-title').textContent = data.brief_label;
+  if (data.brief_icon)  document.getElementById('brief-panel-icon').textContent  = data.brief_icon;
 
   const sections = parseBrief(data.brief);
 
@@ -1141,7 +1063,7 @@ function renderBrief(data) {
     content.innerHTML = `<p style="font-size:0.83rem;color:var(--text-dim)">${data.brief}</p>`;
   } else {
     content.innerHTML = sections.map(s => {
-      if (s.title === 'Market Mood') {
+      if (s.title === 'Market Mood' || s.title === 'Mood') {
         return `<div class="brief-section">
           <div class="brief-section-title">${s.title}</div>
           <div class="brief-mood">${s.items.join(' ')}</div>
@@ -1162,14 +1084,13 @@ function renderBrief(data) {
 }
 
 async function generateBrief() {
-  const key = localStorage.getItem('gemini_key') || '';
-  const panel = document.getElementById('brief-panel');
-  const btn   = document.getElementById('brief-gen-btn');
+  const key    = localStorage.getItem('gemini_key') || '';
+  const panel  = document.getElementById('brief-panel');
+  const btn    = document.getElementById('brief-gen-btn');
   const loading = document.getElementById('brief-loading');
-  const errEl   = document.getElementById('brief-error');
+  const errEl  = document.getElementById('brief-error');
   const content = document.getElementById('brief-content');
 
-  // Check cached brief in sessionStorage (30 min)
   const cached = sessionStorage.getItem('brief_cache');
   if (cached) {
     try {
