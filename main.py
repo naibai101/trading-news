@@ -567,17 +567,39 @@ async def generate_brief(x_api_key: Optional[str] = Header(default=None)):
         sign = "+" if pct >= 0 else ""
         sector_lines.append(f"  {label} ({sym}): {sign}{pct:.2f}%")
 
-    # ── Movers ──
-    mover_lines = []
-    for sym, d in sorted(mover_data.items(), key=lambda x: x[1].get("vol_ratio", 0), reverse=True)[:8]:
-        sign = "+" if d["pct_change"] >= 0 else ""
-        mover_lines.append(f"  {sym}: {sign}{d['pct_change']:.2f}% | {d.get('vol_ratio', 0):.1f}x avg vol")
+    # ── Movers with per-ticker article context ──
+    top_movers = sorted(mover_data.items(), key=lambda x: x[1].get("vol_ratio", 0), reverse=True)[:10]
+    top_mover_syms = [sym for sym, _ in top_movers]
 
-    # ── Headlines ──
-    headline_lines = []
-    for item in deduped[:20]:
-        ticker_note = f" [{item['ticker']}]" if item.get("ticker") else ""
-        headline_lines.append(f"- [{item['category'].upper()}]{ticker_note} {item['title']}")
+    mover_lines = []
+    for sym, d in top_movers:
+        sign = "+" if d["pct_change"] >= 0 else ""
+        mover_lines.append(f"  {sym}: {sign}{d['pct_change']:.2f}% | ${d['price']:.2f} | {d.get('vol_ratio', 0):.1f}x avg vol")
+
+    # Group articles by the mover ticker they mention — gives Gemini the why behind each move
+    mover_articles: dict[str, list[str]] = {sym: [] for sym in top_mover_syms}
+    general_articles: list[str] = []
+
+    def _summary_snippet(text: str, limit: int = 160) -> str:
+        text = text.strip()
+        return text[:limit].rsplit(" ", 1)[0] + "…" if len(text) > limit else text
+
+    for item in deduped[:35]:
+        ticker = item.get("ticker")
+        title = item["title"]
+        snippet = _summary_snippet(item.get("summary") or "")
+        line = f"  • {title}" + (f"\n    {snippet}" if snippet else "")
+        if ticker and ticker in mover_articles:
+            mover_articles[ticker].append(line)
+        else:
+            general_articles.append(f"- [{item['category'].upper()}] {title}" + (f"\n  {snippet}" if snippet else ""))
+
+    mover_context_lines = []
+    for sym in top_mover_syms:
+        articles = mover_articles[sym]
+        if articles:
+            mover_context_lines.append(f"  {sym}:")
+            mover_context_lines.extend(articles[:3])
 
     prompt = f"""You are a swing trading market analyst writing a {cfg['label']}.
 
@@ -592,8 +614,11 @@ async def generate_brief(x_api_key: Optional[str] = Header(default=None)):
 ── TOP MOVERS BY VOLUME SURGE ──
 {chr(10).join(mover_lines) if mover_lines else "  (market closed)"}
 
-── HEADLINES ──
-{chr(10).join(headline_lines)}
+── NEWS CONTEXT PER MOVER ──
+{chr(10).join(mover_context_lines) if mover_context_lines else "  (no matched articles)"}
+
+── GENERAL HEADLINES ──
+{chr(10).join(general_articles[:20])}
 
 Write a detailed swing trader brief using exactly this structure. Each bullet must be specific — name tickers, cite % moves, reference data points. No filler sentences.
 
@@ -622,7 +647,7 @@ Write a detailed swing trader brief using exactly this structure. Each bullet mu
                 "parts": [{"text": "You are an experienced swing trading market analyst. Write detailed, data-driven briefs. Every point must reference a specific ticker, index, percentage move, or concrete event. Avoid vague market commentary — if you mention a trend, cite the instrument and the number."}]
             },
             "contents": [{"role": "user", "parts": [{"text": prompt}]}],
-            "generationConfig": {"maxOutputTokens": 1100, "temperature": 0.4},
+            "generationConfig": {"maxOutputTokens": 1400, "temperature": 0.4},
         }
         async with httpx.AsyncClient(timeout=30.0) as gc:
             resp = await gc.post(gemini_url, json=payload)
