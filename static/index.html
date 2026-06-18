@@ -18,11 +18,11 @@
     --purple-1:    #fca5a5;   /* light crimson — Rin's soft side */
     --purple-2:    #f87171;   /* mid red */
     --purple-3:    #b91c1c;   /* deep crimson — her signature */
-    --pink:        #fbbf24;   /* gold — jewel magic */
+    --pink:        #c4d0e8;   /* silver — Rin's metallic trim */
     --blue-soft:   #93c5fd;
-    --gold:        #fde68a;
+    --gold:        #dce6f4;   /* light silver */
     --green:       #6ee7b7;
-    --amber:       #f59e0b;
+    --amber:       #5ba3d4;   /* teal-blue — Rin's eyes */
     --red-soft:    #fb7185;
     --text-main:   #ffe4e4;
     --text-dim:    #f87171;
@@ -252,7 +252,7 @@
   .news-card[data-cat="macro"]    { border-left-color: rgba(147,197,253,0.32); }
   .news-card[data-cat="markets"]  { border-left-color: rgba(248,113,113,0.38); }
   .news-card[data-cat="earnings"] { border-left-color: rgba(252,211,77,0.32);  }
-  .news-card[data-cat="sector"]   { border-left-color: rgba(251,191,36,0.35);  }
+  .news-card[data-cat="sector"]   { border-left-color: rgba(91,163,212,0.38);  }
 
   .news-card::before { content: ''; position: absolute; inset: 0; border-radius: var(--radius-card); background: linear-gradient(135deg, rgba(185,28,28,0.04), transparent 55%); pointer-events: none; }
   .news-card:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(185,28,28,0.18), 0 0 0 1px var(--border-hv); border-color: var(--border-hv); background: var(--bg-card-hv); }
@@ -267,9 +267,9 @@
   .cat-macro      { background: rgba(147,197,253,0.13); color: var(--blue-soft); }
   .cat-markets    { background: rgba(248,113,113,0.13); color: var(--purple-1); }
   .cat-earnings   { background: rgba(252,211,77,0.13);  color: var(--gold); }
-  .cat-sector     { background: rgba(251,191,36,0.13);  color: var(--pink); }
+  .cat-sector     { background: rgba(91,163,212,0.13);  color: var(--amber); }
   .cat-fed        { background: rgba(110,231,183,0.13); color: var(--green); }
-  .cat-regulatory { background: rgba(251,191,36,0.13);  color: var(--amber); }
+  .cat-regulatory { background: rgba(91,163,212,0.13);  color: var(--amber); }
 
   .source-name { font-size: 0.65rem; color: var(--text-faint); font-weight: 600; }
   .time-ago    { font-size: 0.62rem; color: var(--text-faint); margin-left: auto; }
@@ -423,7 +423,7 @@ let allItems = [], activeFilter = 'all';
 // ── Bokeh + Magic Circles ─────────────────────────────────────────
 (function(){
   const canvas=document.getElementById('bokeh-canvas'),ctx=canvas.getContext('2d');
-  const colors=['rgba(153,27,27,','rgba(239,68,68,','rgba(127,29,29,','rgba(252,165,165,','rgba(251,191,36,','rgba(120,10,10,','rgba(185,28,28,','rgba(254,202,202,'];
+  const colors=['rgba(153,27,27,','rgba(239,68,68,','rgba(127,29,29,','rgba(190,205,230,','rgba(91,163,212,','rgba(120,10,10,','rgba(185,28,28,','rgba(60,100,160,'];
   const orbs=[];
   function resize(){canvas.width=window.innerWidth;canvas.height=window.innerHeight;}
   resize();window.addEventListener('resize',resize);
@@ -451,14 +451,14 @@ let allItems = [], activeFilter = 'all';
       ctx.beginPath();
       ctx.moveTo(cx+Math.cos(a)*inner, cy+Math.sin(a)*inner);
       ctx.lineTo(cx+Math.cos(a)*r,     cy+Math.sin(a)*r);
-      ctx.strokeStyle=major?'rgba(251,191,36,0.9)':minor?'rgba(239,68,68,0.5)':'rgba(239,68,68,0.28)';
+      ctx.strokeStyle=major?'rgba(190,210,240,0.9)':minor?'rgba(239,68,68,0.5)':'rgba(239,68,68,0.28)';
       ctx.lineWidth=major?1.8:0.8;ctx.stroke();
     }
 
     // Second ring — dashed, counter-rotates
     ctx.save();ctx.translate(cx,cy);ctx.rotate(-t*0.18);
     ctx.beginPath();ctx.arc(0,0,r*0.76,0,PI2);
-    ctx.setLineDash([9,5]);ctx.strokeStyle='rgba(251,191,36,0.5)';ctx.lineWidth=1.1;ctx.stroke();
+    ctx.setLineDash([9,5]);ctx.strokeStyle='rgba(190,210,240,0.5)';ctx.lineWidth=1.1;ctx.stroke();
     ctx.setLineDash([]);ctx.restore();
 
     // Hexagram (two triangles) — slowly rotates
@@ -472,14 +472,14 @@ let allItems = [], activeFilter = 'all';
         i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
       }
       ctx.closePath();
-      ctx.strokeStyle=ti===0?'rgba(239,68,68,0.5)':'rgba(251,191,36,0.5)';
+      ctx.strokeStyle=ti===0?'rgba(239,68,68,0.5)':'rgba(190,210,240,0.5)';
       ctx.lineWidth=1.1;ctx.stroke();
     });
     // Dots at hexagram vertices
     for(let i=0;i<6;i++){
       const a=(i/6)*PI2-Math.PI/2;
       ctx.beginPath();ctx.arc(Math.cos(a)*hr,Math.sin(a)*hr,2.5,0,PI2);
-      ctx.fillStyle='rgba(251,191,36,0.7)';ctx.fill();
+      ctx.fillStyle='rgba(190,210,240,0.7)';ctx.fill();
     }
     ctx.restore();
 
@@ -494,7 +494,7 @@ let allItems = [], activeFilter = 'all';
       const x=Math.cos(a)*r*0.29,y=Math.sin(a)*r*0.29;
       i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
     }
-    ctx.closePath();ctx.strokeStyle='rgba(251,191,36,0.55)';ctx.lineWidth=1;ctx.stroke();
+    ctx.closePath();ctx.strokeStyle='rgba(190,210,240,0.55)';ctx.lineWidth=1;ctx.stroke();
     // Small dots at pentagon vertices
     for(let i=0;i<5;i++){
       const a=(i/5)*PI2-Math.PI/2;
@@ -505,7 +505,7 @@ let allItems = [], activeFilter = 'all';
 
     // Jewel glow at center
     const cg=ctx.createRadialGradient(cx,cy,0,cx,cy,r*0.16);
-    cg.addColorStop(0,'rgba(255,220,100,0.55)');
+    cg.addColorStop(0,'rgba(180,215,255,0.55)');
     cg.addColorStop(0.4,'rgba(239,68,68,0.2)');
     cg.addColorStop(1,'rgba(0,0,0,0)');
     ctx.beginPath();ctx.arc(cx,cy,r*0.16,0,PI2);ctx.fillStyle=cg;ctx.fill();
@@ -543,7 +543,7 @@ function timeAgo(iso){
   if(d<86400)return`${Math.floor(d/3600)}h ago`;return`${Math.floor(d/86400)}d ago`;
 }
 function catLabel(c){return{macro:'Macro',markets:'Markets',earnings:'Earnings',sector:'Sector',fed:'Fed/Rates',regulatory:'Regulatory'}[c]||c;}
-function biasColor(b){return{'official':'#6ee7b7','center':'#93c5fd','center-left':'#fca5a5','center-right':'#fde68a','varies':'#fbbf24'}[b]||'#4a1515';}
+function biasColor(b){return{'official':'#6ee7b7','center':'#93c5fd','center-left':'#fca5a5','center-right':'#c4d0e8','varies':'#5ba3d4'}[b]||'#a05252';}
 function fmtVol(v){if(!v)return'—';if(v>=1e9)return(v/1e9).toFixed(1)+'B';if(v>=1e6)return(v/1e6).toFixed(1)+'M';if(v>=1e3)return(v/1e3).toFixed(0)+'K';return String(v);}
 function isMover(i){return i.is_mover_news===true;}
 
@@ -581,7 +581,7 @@ function updateStats(items, moverList){
     const pct=m.pct_change??0,sign=pct>=0?'+':'',cls=pct>=0?'up':'down',trend=pct>=0?'trend-up':'trend-down';
     const chg=m.change??0,vr=m.avg_volume?(m.volume/m.avg_volume):0;
     const barW=Math.min(Math.round((vr/5)*100),100); // cap at 5x=100%
-    const volColor=vr>=2?'var(--gold)':vr>=1.5?'var(--purple-1)':'var(--purple-2)';
+    const volColor=vr>=2?'var(--amber)':vr>=1.5?'var(--purple-1)':'var(--purple-2)';
     return`<div class="ticker-card ${trend}" onclick="document.getElementById('search-input').value='${m.ticker}';setFilter('all');applyFilters()">
       <div class="ticker-top"><span class="ticker-sym">${m.ticker}</span><span class="ticker-price">$${m.price?.toFixed(2)??'—'}</span></div>
       <div class="ticker-pct ${cls}">${sign}${pct.toFixed(2)}% <span style="font-size:.74rem;font-weight:600;opacity:.75">${chg>=0?'+':''}$${chg.toFixed(2)}</span></div>
